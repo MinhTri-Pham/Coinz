@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<item android:id="@+id/wallet" android:title="Wallet"/>
+<item android:id="@+id/bank_account" android:title="Bank Account"/>
+<item android:id="@+id/leaderboard" android:title="Leaderboard"/>
+
+
+</menu>
