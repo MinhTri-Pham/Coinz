@@ -109,6 +109,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     private fun setCameraPosition(location: Location) {
         val latlng = LatLng(location.latitude, location.longitude)
+        Log.d(tag, "Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
         map?.animateCamera(CameraUpdateFactory.newLatLng(latlng))
     }
 
