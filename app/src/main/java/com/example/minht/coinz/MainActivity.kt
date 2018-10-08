@@ -20,9 +20,15 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
+import com.mapbox.mapboxsdk.annotations.MarkerViewOptions
+import com.mapbox.geojson.FeatureCollection
+import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.annotations.MarkerOptions
+
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener {
 
+    private lateinit var geoJsonString: String
     private val tag = "MainActivity"
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
@@ -54,6 +60,82 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             map?.uiSettings?.isZoomControlsEnabled = true
             // Make location information available
             enableLocation()
+            /*geoJsonString = "{\n" +
+                    "  \"type\": \"FeatureCollection\",\n" +
+                    "  \"date-generated\": \"Tue Jan 01 2019\",\n" +
+                    "  \"time-generated\": \"00:00\",\n" +
+                    "  \"approximate-time-remaining\": \"23:59\",\n" +
+                    "  \"rates\": {\n" +
+                    "                   \"SHIL\": 14.549987669178702,\n" +
+                    "                   \"DOLR\": 52.611565218628485,\n" +
+                    "                   \"QUID\": 18.751726260433337,\n" +
+                    "                   \"PENY\": 42.61827189254482\n" +
+                    "               },\n" +
+                    "  \"features\": [\n" +
+                    "    {\n" +
+                    "      \"type\": \"Feature\",\n" +
+                    "      \n" +
+                    "      \"properties\": {\n" +
+                    "        \"id\": \"9479-38a9-1660-7b9c-d091-7279\",\n" +
+                    "        \"value\": \"1.629179461619984\",\n" +
+                    "        \"currency\": \"SHIL\",\n" +
+                    "        \"marker-symbol\": \"1\",\n" +
+                    "        \"marker-color\": \"#0000ff\"\n" +
+                    "      },\n" +
+                    "      \n" +
+                    "      \"geometry\": {\n" +
+                    "        \"type\": \"Point\",\n" +
+                    "        \"coordinates\": [\n" +
+                    "          -3.1903031429467235,\n" +
+                    "          55.9446544923207\n" +
+                    "        ]\n" +
+                    "      }\n" +
+                    "\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"type\": \"Feature\",\n" +
+                    "      \n" +
+                    "      \"properties\": {\n" +
+                    "        \"id\": \"db19-fa94-a852-8d13-81ba-1f7d\",\n" +
+                    "        \"value\": \"8.931103513894806\",\n" +
+                    "        \"currency\": \"PENY\",\n" +
+                    "        \"marker-symbol\": \"9\",\n" +
+                    "        \"marker-color\": \"#ff0000\"\n" +
+                    "      },\n" +
+                    "      \n" +
+                    "      \"geometry\": {\n" +
+                    "        \"type\": \"Point\",\n" +
+                    "        \"coordinates\": [\n" +
+                    "          -3.1893463819968977,\n" +
+                    "          55.944287482364615\n" +
+                    "        ]\n" +
+                    "      }\n" +
+                    "\n" +
+                    "    }\n" +
+                    "        \n" +
+                    "   ]\n" +
+                    "}"*/
+            // Render markers
+            renderJson(map, geoJsonString)
+        }
+    }
+
+    private fun renderJson(map:MapboxMap?, geoJsonString: String) {
+        if (map == null) {
+            Log.d(tag, "[renderJson] map is null")
+        } else {
+            val featureCollection = FeatureCollection.fromJson(geoJsonString)
+            val features = featureCollection.features()
+            features!!.forEach { feature ->
+                val featureGeom = feature.geometry()
+                if (featureGeom is Point) {
+                    val coordinatesList = featureGeom.coordinates()
+                    val lat = coordinatesList[1]
+                    val lng = coordinatesList[0]
+                    val featureLatLng = LatLng(lat, lng)
+                    map.addMarker(MarkerOptions().position(featureLatLng))
+                }
+            }
         }
     }
 
