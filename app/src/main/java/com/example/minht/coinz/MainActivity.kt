@@ -20,7 +20,6 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
-import com.mapbox.mapboxsdk.annotations.MarkerViewOptions
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
@@ -28,10 +27,11 @@ import com.mapbox.mapboxsdk.annotations.MarkerOptions
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener {
 
-    private lateinit var geoJsonString: String
     private val tag = "MainActivity"
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
+    private lateinit var geoJsonString: String
+    private var coinMapList = mutableListOf<Coin>()  // Coins in the map
     private lateinit var originLocation: Location
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var locationEngine: LocationEngine
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             map?.uiSettings?.isZoomControlsEnabled = true
             // Make location information available
             enableLocation()
-            /*geoJsonString = "{\n" +
+            geoJsonString = "{\n" +
                     "  \"type\": \"FeatureCollection\",\n" +
                     "  \"date-generated\": \"Tue Jan 01 2019\",\n" +
                     "  \"time-generated\": \"00:00\",\n" +
@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     "    }\n" +
                     "        \n" +
                     "   ]\n" +
-                    "}"*/
+                    "}" // String for testing purposes
             // Render markers
             renderJson(map, geoJsonString)
         }
@@ -129,11 +129,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             features!!.forEach { feature ->
                 val featureGeom = feature.geometry()
                 if (featureGeom is Point) {
-                    val coordinatesList = featureGeom.coordinates()
-                    val lat = coordinatesList[1]
-                    val lng = coordinatesList[0]
-                    val featureLatLng = LatLng(lat, lng)
-                    map.addMarker(MarkerOptions().position(featureLatLng))
+                    val jsonObj = feature.properties()
+                    if (jsonObj == null) {
+                        Log.d(tag, "[renderJson] JSON object is null")
+                    } else {
+                        // Extract properties and show marker
+                        val currency = jsonObj.get("currency").toString().replace("\"","")
+                        val coinId = jsonObj.get("id").toString().replace("\"","")
+                        val approxVal =jsonObj.get("value").asFloat
+                        val approxValFormat = String.format("%.2f",approxVal) // Round to 2 decimal digits for readability
+                        val coordinatesList = featureGeom.coordinates()
+                        val lat = coordinatesList[1]
+                        val lng = coordinatesList[0]
+                        val featureLatLng = LatLng(lat, lng)
+                        val coin = Coin(coinId,currency,featureLatLng)
+                        coinMapList.add(coin) // Add coin to list of coins in the map
+                        Log.d(tag, "[renderJson] coin " + coin.toString() + " was added")
+                        map.addMarker(MarkerOptions().title(approxValFormat).snippet(currency).position(featureLatLng))
+                    }
                 }
             }
         }
@@ -191,7 +204,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     private fun setCameraPosition(location: Location) {
         val latlng = LatLng(location.latitude, location.longitude)
-        Log.d(tag, "Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
+        Log.d(tag, "[setCameraPosition] Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
         map?.animateCamera(CameraUpdateFactory.newLatLng(latlng))
     }
 
@@ -200,8 +213,27 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             Log.d(tag, "[onLocationChanged] location is null")
         } else {
             originLocation = location
+            // Report distance from user to each coin (for testing purposes)
+            for (coin in coinMapList) {
+                val distance = distanceCoin(location, coin)
+                Log.d(tag, "[onLocationChanged] Distance to " + coin.toString() + ": $distance\n")
+            }
             setCameraPosition(originLocation)
         }
+    }
+
+    // Computes distance between the user and the coin is computed using Haverside's formula
+    private fun distanceCoin(location: Location, coin: Coin) : Double {
+        val userLat = Math.toRadians(location.latitude)
+        val coinLat = Math.toRadians(coin.position.latitude)
+        val latDiff = Math.toRadians(coin.position.latitude - location.latitude)
+        val lngDiff = Math.toRadians(coin.position.longitude - location.longitude)
+        val a = Math.sin(latDiff / 2) * Math.sin(latDiff / 2)
+        + Math.cos(userLat) * Math.cos(coinLat) * Math.sin(lngDiff / 2) * Math.sin(lngDiff / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+        val earthRadius = 6378000
+        val distance = earthRadius * c
+        return distance
     }
 
     @SuppressWarnings("MissingPermission")
