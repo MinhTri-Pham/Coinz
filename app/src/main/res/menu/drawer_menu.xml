@@ -2,6 +2,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 <item android:id="@+id/wallet" android:title="Wallet"/>
 <item android:id="@+id/bank_account" android:title="Bank Account"/>
+<item android:id="@+id/trade" android:title="Trade"/>
 <item android:id="@+id/gifts" android:title="Gifts"/>
 <item android:id="@+id/leaderboard" android:title="Leaderboard"/>
+<item android:id="@+id/stats" android:title="Statistics"/>
+<item android:id="@+id/log_off" android:title="Log Off"/>
 </menu>

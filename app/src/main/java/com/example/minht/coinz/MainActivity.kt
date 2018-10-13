@@ -23,15 +23,17 @@ import kotlinx.android.synthetic.main.activity_main.*
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import java.text.SimpleDateFormat
+import java.util.*
 
-
-class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener,DownloadCompleteListener {
 
     private val tag = "MainActivity"
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
+    //private var coinMapList = mutableListOf<Coin>()  // Coins in the map
+    private lateinit var currentDate: String // Format: YYYY/MM/DD
     private lateinit var geoJsonString: String
-    private var coinMapList = mutableListOf<Coin>()  // Coins in the map
     private lateinit var originLocation: Location
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var locationEngine: LocationEngine
@@ -50,6 +52,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapView?.getMapAsync(this)
     }
 
+    // Returns todays date in format: YYYY/MM/DD
+    private fun getCurrentDate() : String {
+        val sdf = SimpleDateFormat("yyyy/MM/dd",java.util.Locale.getDefault())
+        val result = sdf.format(Date())
+        Log.d(tag, "[getCurrentDate]: current date is $result")
+        return result
+    }
+
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
             Log.d(tag, "[onMapReady] mapboxMap is null")
@@ -60,63 +70,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             map?.uiSettings?.isZoomControlsEnabled = true
             // Make location information available
             enableLocation()
-            geoJsonString = "{\n" +
-                    "  \"type\": \"FeatureCollection\",\n" +
-                    "  \"date-generated\": \"Tue Jan 01 2019\",\n" +
-                    "  \"time-generated\": \"00:00\",\n" +
-                    "  \"approximate-time-remaining\": \"23:59\",\n" +
-                    "  \"rates\": {\n" +
-                    "                   \"SHIL\": 14.549987669178702,\n" +
-                    "                   \"DOLR\": 52.611565218628485,\n" +
-                    "                   \"QUID\": 18.751726260433337,\n" +
-                    "                   \"PENY\": 42.61827189254482\n" +
-                    "               },\n" +
-                    "  \"features\": [\n" +
-                    "    {\n" +
-                    "      \"type\": \"Feature\",\n" +
-                    "      \n" +
-                    "      \"properties\": {\n" +
-                    "        \"id\": \"9479-38a9-1660-7b9c-d091-7279\",\n" +
-                    "        \"value\": \"1.629179461619984\",\n" +
-                    "        \"currency\": \"SHIL\",\n" +
-                    "        \"marker-symbol\": \"1\",\n" +
-                    "        \"marker-color\": \"#0000ff\"\n" +
-                    "      },\n" +
-                    "      \n" +
-                    "      \"geometry\": {\n" +
-                    "        \"type\": \"Point\",\n" +
-                    "        \"coordinates\": [\n" +
-                    "          -3.1903031429467235,\n" +
-                    "          55.9446544923207\n" +
-                    "        ]\n" +
-                    "      }\n" +
-                    "\n" +
-                    "    },\n" +
-                    "    {\n" +
-                    "      \"type\": \"Feature\",\n" +
-                    "      \n" +
-                    "      \"properties\": {\n" +
-                    "        \"id\": \"db19-fa94-a852-8d13-81ba-1f7d\",\n" +
-                    "        \"value\": \"8.931103513894806\",\n" +
-                    "        \"currency\": \"PENY\",\n" +
-                    "        \"marker-symbol\": \"9\",\n" +
-                    "        \"marker-color\": \"#ff0000\"\n" +
-                    "      },\n" +
-                    "      \n" +
-                    "      \"geometry\": {\n" +
-                    "        \"type\": \"Point\",\n" +
-                    "        \"coordinates\": [\n" +
-                    "          -3.1893463819968977,\n" +
-                    "          55.944287482364615\n" +
-                    "        ]\n" +
-                    "      }\n" +
-                    "\n" +
-                    "    }\n" +
-                    "        \n" +
-                    "   ]\n" +
-                    "}" // String for testing purposes
-            // Render markers
-            renderJson(map, geoJsonString)
+            // Set up URL to download map from
+            currentDate = getCurrentDate()
+            val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
+            Log.d(tag,"[onMapReady] downloading from $downloadUrl")
+            val downloadFileTask = DownloadFileTask(this)
+            downloadFileTask.execute(downloadUrl)
         }
     }
 
@@ -135,20 +94,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     } else {
                         // Extract properties and show marker
                         val currency = jsonObj.get("currency").toString().replace("\"","")
-                        val coinId = jsonObj.get("id").toString().replace("\"","")
+                        //val coinId = jsonObj.get("id").toString().replace("\"","")
                         val approxVal =jsonObj.get("value").asFloat
                         val approxValFormat = String.format("%.2f",approxVal) // Round to 2 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
                         val lat = coordinatesList[1]
                         val lng = coordinatesList[0]
                         val featureLatLng = LatLng(lat, lng)
-                        val coin = Coin(coinId,currency,featureLatLng)
-                        coinMapList.add(coin) // Add coin to list of coins in the map
-                        Log.d(tag, "[renderJson] coin " + coin.toString() + " was added")
+                        //val coin = Coin(coinId,currency,featureLatLng)
+                        //coinMapList.add(coin) // Add coin to list of coins in the map
                         map.addMarker(MarkerOptions().title(approxValFormat).snippet(currency).position(featureLatLng))
                     }
                 }
             }
+            Log.d(tag, "[renderJson] all markers added")
         }
     }
 
@@ -214,16 +173,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         } else {
             originLocation = location
             // Report distance from user to each coin (for testing purposes)
-            for (coin in coinMapList) {
+            /*for (coin in coinMapList) {
                 val distance = distanceCoin(location, coin)
                 Log.d(tag, "[onLocationChanged] Distance to " + coin.toString() + ": $distance\n")
-            }
+            }*/
             setCameraPosition(originLocation)
         }
     }
 
     // Computes distance between the user and the coin is computed using Haverside's formula
-    private fun distanceCoin(location: Location, coin: Coin) : Double {
+    /*private fun distanceCoin(location: Location, coin: Coin) : Double {
         val userLat = Math.toRadians(location.latitude)
         val coinLat = Math.toRadians(coin.position.latitude)
         val latDiff = Math.toRadians(coin.position.latitude - location.latitude)
@@ -234,7 +193,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val earthRadius = 6378000
         val distance = earthRadius * c
         return distance
-    }
+    }*/
 
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
@@ -291,6 +250,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         super.onSaveInstanceState(outState)
         if (outState != null) {
             mapView?.onSaveInstanceState(outState)
+        }
+    }
+
+    override fun downloadComplete(result: String) {
+        geoJsonString = result
+        if (geoJsonString != null) {
+            Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data")
+            // Render markers after download was completed
+            renderJson(map, geoJsonString)
+        } else {
+            Log.d(tag, "[downloadComplete] unable to extract String with GeoJSON data")
         }
     }
 }
