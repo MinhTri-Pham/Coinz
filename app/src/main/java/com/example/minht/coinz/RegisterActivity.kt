@@ -6,21 +6,20 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 
-class LoginActivity : AppCompatActivity() {
+class RegisterActivity : AppCompatActivity() {
 
-    private lateinit var loginButton : Button
+    private lateinit var buttonRegister : Button
     private lateinit var editTextEmail : EditText
     private lateinit var editTextPassword : EditText
-    private lateinit var signUpLink : TextView
+    private lateinit var signInLink : TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
-        loginButton = findViewById(R.id.loginButton)
+        setContentView(R.layout.activity_register)
+
+        buttonRegister = findViewById(R.id.buttonRegister)
         editTextEmail = findViewById(R.id.editTextEmail)
         editTextPassword = findViewById(R.id.editTextPassword)
-        signUpLink = findViewById(R.id.signUpLink)
+        signInLink = findViewById(R.id.signInLink)
     }
-
-
 }
