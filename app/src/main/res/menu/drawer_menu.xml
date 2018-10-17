@@ -6,5 +6,5 @@
 <item android:id="@+id/gifts" android:title="Gifts"/>
 <item android:id="@+id/leaderboard" android:title="Leaderboard"/>
 <item android:id="@+id/stats" android:title="Statistics"/>
-<item android:id="@+id/log_off" android:title="Log Off"/>
+<item android:id="@+id/sign_out" android:title="Sign Out"/>
 </menu>

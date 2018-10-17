@@ -1,25 +1,72 @@
 package com.example.minht.coinz
 
+import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.auth.FirebaseAuth
 
 class LoginActivity : AppCompatActivity() {
 
+    private val tag = "LoginActivity"
+    private lateinit var mAuth : FirebaseAuth
     private lateinit var loginButton : Button
-    private lateinit var editTextEmail : EditText
-    private lateinit var editTextPassword : EditText
-    private lateinit var signUpLink : TextView
+    private lateinit var registerLink : TextView
+    private lateinit var emailText : EditText
+    private lateinit var passwordText : EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
-        loginButton = findViewById(R.id.loginButton)
-        editTextEmail = findViewById(R.id.editTextEmail)
-        editTextPassword = findViewById(R.id.editTextPassword)
-        signUpLink = findViewById(R.id.signUpLink)
+
+        mAuth = FirebaseAuth.getInstance()
+        loginButton = findViewById<View>(R.id.loginButton) as Button
+        // Handle login button and register link click
+        loginButton.setOnClickListener(View.OnClickListener {
+            view -> loginUser()
+        })
+        registerLink = findViewById<View>(R.id.signUpLink) as TextView
+        registerLink.setOnClickListener(View.OnClickListener {
+            view -> switchToRegister()
+        })
+    }
+
+    // Invoked when user presses the Log in button
+    // If credentials correct, Map view opens, otherwise user is warned to change input
+    private fun loginUser() {
+        emailText = findViewById<View>(R.id.editTextEmail) as EditText
+        passwordText = findViewById<View>(R.id.editTextPassword) as EditText
+        val email = emailText.text.toString()
+        val password = passwordText.text.toString()
+        // Check if email and password text fields are empty
+        if (!email.isEmpty() && !password.isEmpty()) {
+            // Check validity of credentials, warn user if invalid
+            mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener(this, OnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(tag, "[loginUser] User logged in successfully")
+                    startActivity(Intent(this,MainActivity::class.java))
+                    Toast.makeText(this,"Successfully logged in", Toast.LENGTH_SHORT).show()
+                } else {
+                    Log.d(tag, "[loginUser] Authentication failed since credentials were incorrect")
+                    Toast.makeText(this,"Email or password wasn't correct", Toast.LENGTH_SHORT).show()
+                }
+            })
+        // If credentials empty warn user about this
+        } else {
+            Log.d(tag, "[loginUser] Authentication failed since credentials were incorrect")
+            Toast.makeText(this, "Please fill the credentials",Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // If uses presses the link to create a new account, he's taken to the Register screen
+    private fun switchToRegister() {
+        startActivity(Intent(this,RegisterActivity::class.java))
     }
 
 

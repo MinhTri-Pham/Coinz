@@ -19,15 +19,16 @@
             android:name=".MainActivity"
             android:label="Coinz"
             android:theme="@style/AppTheme.NoActionBar">
+        </activity>
+        <activity
+            android:name=".LoginActivity"
+            android:label="Coinz">
+            <!-- Set LoginActivity as the first activity launched -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name=".LoginActivity"
-            android:label="Coinz">
         </activity>
         <activity
             android:name=".RegisterActivity"

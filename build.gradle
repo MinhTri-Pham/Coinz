@@ -12,6 +12,12 @@ buildscript {
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
+
+        // Upgraded google services from 3.1.1 to 3.2.0 to eradicate warning caused by google services plugin
+        // After Firebase dependencies were applied, project failed to build on start up
+        // Warning: Configuration 'compile' is obsolete and has been replaced with 'implementation'.
+        // It will be removed at the end of 2018
+        classpath 'com.google.gms:google-services:3.2.0'
     }
 }
 

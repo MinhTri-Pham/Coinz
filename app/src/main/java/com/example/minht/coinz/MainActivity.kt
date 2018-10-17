@@ -1,9 +1,14 @@
 package com.example.minht.coinz
 
+import android.content.Intent
 import android.location.Location
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.design.widget.NavigationView
+import android.support.v4.widget.DrawerLayout
 import android.util.Log
+import android.view.MenuItem
+import com.google.firebase.auth.FirebaseAuth
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
@@ -26,7 +31,8 @@ import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener,DownloadCompleteListener {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener,
+        PermissionsListener,DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
 
     private val tag = "MainActivity"
     private var mapView: MapView? = null
@@ -38,11 +44,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
+    private lateinit var mDrawerLayout : DrawerLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
+
+        mDrawerLayout = findViewById(R.id.drawer_layout)
+        val navigationView = findViewById(R.id.nav_view) as NavigationView
+        navigationView.setNavigationItemSelectedListener(this)
 
         Mapbox.getInstance(this, getString(R.string.access_token))
 
@@ -255,12 +266,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     override fun downloadComplete(result: String) {
         geoJsonString = result
-        if (geoJsonString != null) {
-            Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data")
-            // Render markers after download was completed
-            renderJson(map, geoJsonString)
-        } else {
-            Log.d(tag, "[downloadComplete] unable to extract String with GeoJSON data")
+        Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data")
+        // Render markers after download was completed
+        renderJson(map, geoJsonString)
+    }
+
+    // Handle navigation drawer click events
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        // Provisionally only handle sign out action which signs out current user and returns him to log in screen
+        when (item.itemId) {
+            R.id.sign_out -> {
+                Log.d(tag,"[onNavigationItemSelected] Signing out user")
+                FirebaseAuth.getInstance().signOut();
+                finish()
+                startActivity(Intent(this,LoginActivity::class.java))
+            }
         }
+        return true;
     }
 }
