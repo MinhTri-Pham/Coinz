@@ -1,11 +1,14 @@
 package com.example.minht.coinz
 
+import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.location.Location
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.v4.widget.DrawerLayout
+import android.support.v7.app.AlertDialog
 import android.util.Log
 import android.view.MenuItem
 import com.google.firebase.auth.FirebaseAuth
@@ -27,9 +30,11 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener,
         PermissionsListener,DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
@@ -37,14 +42,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private val tag = "MainActivity"
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
-    //private var coinMapList = mutableListOf<Coin>()  // Coins in the map
-    private lateinit var currentDate: String // Format: YYYY/MM/DD
-    private lateinit var geoJsonString: String
+    private lateinit var mDrawerLayout : DrawerLayout
+    private var downloadDate = "" // Format: YYYY/MM/DD
+    private var geoJsonString = "" // String with GeoJSON data
     private lateinit var originLocation: Location
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
-    private lateinit var mDrawerLayout : DrawerLayout
+
+    private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
+    //private val MAX_COINS = 50; // Maximum number of coins that can be collected on any day
+    private var numDayCollectedCoins = 0; // Number of coins collected on the current day
+    private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
+    private var coinsList = mutableListOf<Coin>() // List of coins in user's wallet
+
+    private val preferencesFile = "MyPrefsFile" // For storing preferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,12 +93,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             map?.uiSettings?.isZoomControlsEnabled = true
             // Make location information available
             enableLocation()
-            // Set up URL to download map from
-            currentDate = getCurrentDate()
-            val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
-            Log.d(tag,"[onMapReady] downloading from $downloadUrl")
-            val downloadFileTask = DownloadFileTask(this)
-            downloadFileTask.execute(downloadUrl)
+            // Get current date
+            val currDate = getCurrentDate()
+            // If current date same as last download date, render markers directly
+            // Otherwise, set up download URL and download the map
+            if (currDate.equals(downloadDate)) {
+                Log.d(tag,"[onMapReady] Already downloaded map today, rendering markers directly")
+                renderJson(map,geoJsonString)
+            } else {
+                Log.d(tag,"[onMapReady] First time logging in today, download map from server")
+                downloadDate = currDate
+                val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$downloadDate/coinzmap.geojson"
+                Log.d(tag,"[onMapReady] Downloading from $downloadUrl")
+                val downloadFileTask = DownloadFileTask(this)
+                downloadFileTask.execute(downloadUrl)
+            }
         }
     }
 
@@ -103,22 +124,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     if (jsonObj == null) {
                         Log.d(tag, "[renderJson] JSON object is null")
                     } else {
-                        // Extract properties and show marker
+                        // Extract properties, show markers and populate marker list
                         val currency = jsonObj.get("currency").toString().replace("\"","")
-                        //val coinId = jsonObj.get("id").toString().replace("\"","")
+                        val markerId = jsonObj.get("id").toString().replace("\"","")
                         val approxVal =jsonObj.get("value").asFloat
                         val approxValFormat = String.format("%.2f",approxVal) // Round to 2 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
                         val lat = coordinatesList[1]
                         val lng = coordinatesList[0]
                         val featureLatLng = LatLng(lat, lng)
-                        //val coin = Coin(coinId,currency,featureLatLng)
-                        //coinMapList.add(coin) // Add coin to list of coins in the map
-                        map.addMarker(MarkerOptions().title(approxValFormat).snippet(currency).position(featureLatLng))
+                        val markerOpts = MarkerOptions().title(approxValFormat).snippet(currency).position(featureLatLng)
+                        Log.d(tag, "[renderJson] marker was added into the map and into markerList\n")
+                        val marker = map.addMarker(markerOpts)
+                        markerList.put(markerId,marker)
                     }
                 }
             }
-            Log.d(tag, "[renderJson] all markers added")
+            Log.d(tag, "[renderJson] all markers added and markerList populated")
         }
     }
 
@@ -178,33 +200,50 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         map?.animateCamera(CameraUpdateFactory.newLatLng(latlng))
     }
 
+    // When location changes,
+    // If user is sufficiently close to any coin (at least 25m), remove it from the map
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
             Log.d(tag, "[onLocationChanged] location is null")
         } else {
             originLocation = location
-            // Report distance from user to each coin (for testing purposes)
-            /*for (coin in coinMapList) {
-                val distance = distanceCoin(location, coin)
-                Log.d(tag, "[onLocationChanged] Distance to " + coin.toString() + ": $distance\n")
-            }*/
             setCameraPosition(originLocation)
+            var removeMarkerId : String? = null
+            // Compute distance to markers and act accordingly
+            for ((markerId, marker) in markerList) {
+                val distToMarker = distanceToMarker(originLocation,marker)
+                // If user sufficiently close, remove marker from map
+                if (distToMarker <= MAX_MARKER_DISTANCE) {
+                    Log.d(tag,"[onLocationChanged] Within collection distance of marker " +
+                            "with id $markerId distance = $distToMarker)")
+                    map!!.removeMarker(marker)
+                    removeMarkerId = markerId
+                    val coin = Coin(marker.snippet, marker.title.toDouble())
+                    coinsList.add(coin)
+                    break
+                }
+            }
+            markerList.remove(removeMarkerId)
+            if (removeMarkerId != null) {
+                Log.d(tag,"[onLocationChanged] Within collection distance of marker " +
+                        "with id $removeMarkerId removed from map and markerList")
+            }
+            numDayCollectedCoins++
         }
     }
 
-    // Computes distance between the user and the coin is computed using Haverside's formula
-    /*private fun distanceCoin(location: Location, coin: Coin) : Double {
+    // Computes distance between the user and a marker using Haverside's formula
+    private fun distanceToMarker(location: Location, marker : Marker) : Double {
         val userLat = Math.toRadians(location.latitude)
-        val coinLat = Math.toRadians(coin.position.latitude)
-        val latDiff = Math.toRadians(coin.position.latitude - location.latitude)
-        val lngDiff = Math.toRadians(coin.position.longitude - location.longitude)
+        val markerLat = Math.toRadians(marker.position.latitude)
+        val latDiff = Math.toRadians(marker.position.latitude - location.latitude)
+        val lngDiff = Math.toRadians(marker.position.longitude - location.longitude)
         val a = Math.sin(latDiff / 2) * Math.sin(latDiff / 2)
-        + Math.cos(userLat) * Math.cos(coinLat) * Math.sin(lngDiff / 2) * Math.sin(lngDiff / 2)
+        + Math.cos(userLat) * Math.cos(markerLat) * Math.sin(lngDiff / 2) * Math.sin(lngDiff / 2)
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
         val earthRadius = 6378000
-        val distance = earthRadius * c
-        return distance
-    }*/
+        return earthRadius * c
+    }
 
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
@@ -230,6 +269,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStart() {
         super.onStart()
         mapView?.onStart()
+         // Restore preferences
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        // Get last download date and coins map
+        downloadDate = settings.getString("lastDownloadDate", "")
+        geoJsonString = settings.getString("lastCoinMap","")
+        // Write a message to ”logcat” (for debugging purposes)
+        Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
+        Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
+
     }
 
     public override fun onResume() {
@@ -245,6 +293,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStop() {
         super.onStop()
         mapView?.onStop()
+        Log.d(tag, "[onStop] Storing lastDownloadDate of $downloadDate")
+        Log.d(tag, "[onStop] Storing lastCoinMap as $geoJsonString")
+        // All objects are from android.context.Context
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val editor = settings.edit()
+        editor.putString("lastDownloadDate", downloadDate)
+        editor.putString("lastCoinMap",geoJsonString)
+        // Apply the edits!
+        editor.apply()
     }
 
     override fun onLowMemory() {
@@ -266,7 +323,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     override fun downloadComplete(result: String) {
         geoJsonString = result
-        Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data")
+        Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data $geoJsonString")
         // Render markers after download was completed
         renderJson(map, geoJsonString)
     }
@@ -276,12 +333,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         // Provisionally only handle sign out action which signs out current user and returns him to log in screen
         when (item.itemId) {
             R.id.sign_out -> {
-                Log.d(tag,"[onNavigationItemSelected] Signing out user")
-                FirebaseAuth.getInstance().signOut();
-                finish()
-                startActivity(Intent(this,LoginActivity::class.java))
+                // Confirmation dialog for user to confirm this action
+                val confirmSignOut = AlertDialog.Builder(this)
+                confirmSignOut.setTitle("Confirm sign out")
+                confirmSignOut.setMessage("Are you sure that you want to sign out from the game?")
+                confirmSignOut.setCancelable(false)
+                confirmSignOut.setPositiveButton("Yes") { _: DialogInterface?, _: Int ->
+                    // If user confirms action, he's signed out
+                    Log.d(tag,"[onNavigationItemSelected] Signing out user")
+                    FirebaseAuth.getInstance().signOut()
+                    finish()
+                    startActivity(Intent(this,LoginActivity::class.java))
+                }
+                // Otherwise nothing happens
+                confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
+                confirmSignOut.show()
             }
         }
-        return true;
+        return true
     }
 }

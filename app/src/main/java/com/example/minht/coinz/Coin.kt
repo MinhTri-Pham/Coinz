@@ -2,9 +2,10 @@ package com.example.minht.coinz
 
 import com.mapbox.mapboxsdk.geometry.LatLng
 
-class Coin (val id: String, val currency: String, val position: LatLng) {
+class Coin (val currency: String, val valueInGold : Double) {
 
-
-    override fun toString() : String = "Id: " + id + " Currency: " + currency + " Lat: " + position.latitude + " Lat: " + position.longitude
+    // For displaying in the wallet
+    // Only approximate value shown for better user readibility
+    override fun toString() : String =  " Currency: $currency Approximate value: " + String.format("%.3f",valueInGold)
 
 }
