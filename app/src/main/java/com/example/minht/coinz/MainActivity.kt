@@ -51,10 +51,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-    //private val MAX_COINS = 50; // Maximum number of coins that can be collected on any day
+    private val MAX_COINS = 50; // Maximum number of coins that can be collected on any day
     private var numDayCollectedCoins = 0; // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
-    private var coinsList = mutableListOf<Coin>() // List of coins in user's wallet
+    private var visitedMarkerIdList : Set<String> = setOf() // Set of markers already visited by user on the day
+    private var walletList = mutableListOf<Coin>() // List of coins in user's wallet
 
     private val preferencesFile = "MyPrefsFile" // For storing preferences
 
@@ -75,7 +76,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapView?.getMapAsync(this)
     }
 
-    // Returns todays date in format: YYYY/MM/DD
+    // Returns today's date in format: YYYY/MM/DD
     private fun getCurrentDate() : String {
         val sdf = SimpleDateFormat("yyyy/MM/dd",java.util.Locale.getDefault())
         val result = sdf.format(Date())
@@ -95,14 +96,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             enableLocation()
             // Get current date
             val currDate = getCurrentDate()
-            // If current date same as last download date, render markers directly
-            // Otherwise, set up download URL and download the map
             if (currDate.equals(downloadDate)) {
-                Log.d(tag,"[onMapReady] Already downloaded map today, rendering markers directly")
+                // Already played today, render markers directly
+                Log.d(tag,"[onMapReady] Already played today, rendering markers directly")
                 renderJson(map,geoJsonString)
             } else {
-                Log.d(tag,"[onMapReady] First time logging in today, download map from server")
+                // First time playing today
+                // Reset values and download coin map
+                Log.d(tag,"[onMapReady] First time playing today, reset values and download map from server")
                 downloadDate = currDate
+                numDayCollectedCoins = 0
+                visitedMarkerIdList = setOf()
                 val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$downloadDate/coinzmap.geojson"
                 Log.d(tag,"[onMapReady] Downloading from $downloadUrl")
                 val downloadFileTask = DownloadFileTask(this)
@@ -117,7 +121,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         } else {
             val featureCollection = FeatureCollection.fromJson(geoJsonString)
             val features = featureCollection.features()
-            features!!.forEach { feature ->
+            val numFeatures = features!!.size
+            for (i in 0..numFeatures-1) {
+                val feature = features.get(i)
                 val featureGeom = feature.geometry()
                 if (featureGeom is Point) {
                     val jsonObj = feature.properties()
@@ -127,6 +133,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         // Extract properties, show markers and populate marker list
                         val currency = jsonObj.get("currency").toString().replace("\"","")
                         val markerId = jsonObj.get("id").toString().replace("\"","")
+                        if (visitedMarkerIdList.contains(markerId)) {
+                            Log.d(tag,"[renderJson] Marker already visited, not rendering it")
+                            continue
+                        }
                         val approxVal =jsonObj.get("value").asFloat
                         val approxValFormat = String.format("%.2f",approxVal) // Round to 2 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
@@ -217,9 +227,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Log.d(tag,"[onLocationChanged] Within collection distance of marker " +
                             "with id $markerId distance = $distToMarker)")
                     map!!.removeMarker(marker)
+                    visitedMarkerIdList += markerId
                     removeMarkerId = markerId
                     val coin = Coin(marker.snippet, marker.title.toDouble())
-                    coinsList.add(coin)
+                    walletList.add(coin)
                     break
                 }
             }
@@ -229,9 +240,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         "with id $removeMarkerId removed from map and markerList")
             }
             numDayCollectedCoins++
+            // If all coins collected,
+            if (numDayCollectedCoins == MAX_COINS) {
+                openCollectAllCoinsDialog()
+            }
         }
     }
-
     // Computes distance between the user and a marker using Haverside's formula
     private fun distanceToMarker(location: Location, marker : Marker) : Double {
         val userLat = Math.toRadians(location.latitude)
@@ -243,6 +257,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
         val earthRadius = 6378000
         return earthRadius * c
+    }
+
+    // Opening information dialog when user collects all coins on the day
+    private fun openCollectAllCoinsDialog() {
+        val allCoinsDialog = AlertDialog.Builder(this)
+        allCoinsDialog.setTitle("Collected all coins!")
+        allCoinsDialog.setMessage("Congratulations, you have successfully collected all coins today!" +
+         " You'll receive __ GOLD into your bank account as a reward."
+                + " Play again tomorrow to get another daily bonus.")
+        // Clicking OK dismisses the dialog
+        allCoinsDialog.setPositiveButton("OK") { _: DialogInterface?, _: Int -> }
+        allCoinsDialog.show()
     }
 
     @SuppressWarnings("MissingPermission")
@@ -271,13 +297,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapView?.onStart()
          // Restore preferences
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        // Get last download date and coins map
+        // Get saved values
         downloadDate = settings.getString("lastDownloadDate", "")
         geoJsonString = settings.getString("lastCoinMap","")
+        numDayCollectedCoins = settings.getString("numDayCollectedCoins","0").toInt()
+        visitedMarkerIdList = settings.getStringSet("visitedMarkers", setOf())
         // Write a message to ”logcat” (for debugging purposes)
         Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
-
+        Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
+        Log.d(tag, "[onStart] Recalled visited markers:\n")
+        for (visitedMarkerId in visitedMarkerIdList) {
+            Log.d(tag, visitedMarkerId)
+        }
     }
 
     public override fun onResume() {
@@ -295,12 +327,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapView?.onStop()
         Log.d(tag, "[onStop] Storing lastDownloadDate of $downloadDate")
         Log.d(tag, "[onStop] Storing lastCoinMap as $geoJsonString")
-        // All objects are from android.context.Context
+        Log.d(tag, "[onStop] Number of collected coins as $numDayCollectedCoins")
+        // Store values for persistence
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         val editor = settings.edit()
         editor.putString("lastDownloadDate", downloadDate)
         editor.putString("lastCoinMap",geoJsonString)
-        // Apply the edits!
+        editor.putString("numDayCollectedCoins", numDayCollectedCoins.toString())
+        editor.putStringSet("visitedMarkers", visitedMarkerIdList)
+        Log.d(tag, "[onStop] Storing visited markers:\n")
+        for (visitedMarkerId in visitedMarkerIdList) {
+            Log.d(tag, visitedMarkerId)
+        }
         editor.apply()
     }
 
