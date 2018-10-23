@@ -11,7 +11,11 @@ import android.support.v4.widget.DrawerLayout
 import android.support.v7.app.AlertDialog
 import android.util.Log
 import android.view.MenuItem
+import android.widget.TextView
+import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
@@ -32,6 +36,7 @@ import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import org.w3c.dom.Text
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.HashMap
@@ -39,7 +44,8 @@ import kotlin.collections.HashMap
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener,
         PermissionsListener,DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
 
-    private val tag = "MainActivity"
+    private val tag = "MainActivity" // Logging purposes
+    // Location variables
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
     private lateinit var mDrawerLayout : DrawerLayout
@@ -50,22 +56,49 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
+    // Coin collection mechanism variables
     private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-    private val MAX_COINS = 50; // Maximum number of coins that can be collected on any day
+    private val MAX_COINS = 50; // Maximum number of coins that can be collected on per day
     private var numDayCollectedCoins = 0; // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : Set<String> = setOf() // Set of markers already visited by user on the day
-    private var walletList = mutableListOf<Coin>() // List of coins in user's wallet
+    private var walletList = ArrayList<String>() // List of coins in user's wallet
 
     private val preferencesFile = "MyPrefsFile" // For storing preferences
+
+    // Firebase/Firestore variables
+    private lateinit var mAuth: FirebaseAuth
+    private lateinit var db : FirebaseFirestore
+    private val COLLECTION_KEY = "Users"
+    private val USERNAME_KEY = "Username"
+    private val EMAIL_KEY = "Email"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        mAuth = FirebaseAuth.getInstance()
         mDrawerLayout = findViewById(R.id.drawer_layout)
-        val navigationView = findViewById(R.id.nav_view) as NavigationView
+        val navigationView = findViewById<NavigationView>(R.id.nav_view)
+        val headerView = navigationView.getHeaderView(0)
+        val navText = headerView.findViewById(R.id.nav_text) as TextView
+        db = FirebaseFirestore.getInstance()
+        val userId = mAuth.uid
+        val userRef = db.collection(COLLECTION_KEY).document(userId!!)
+        var headerText = ""
+        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
+            if (documentSnapshot!!.exists()) {
+                val username = documentSnapshot.getString(USERNAME_KEY)
+                val email = documentSnapshot.getString(EMAIL_KEY)
+                headerText = "Welcome back $username!\n$email"
+                navText.text = headerText
+                Log.d(tag,"[onCreate] Created welcome message")
+            } else {
+                Log.d(tag,"[onCreate] User document not found")
+            }
+        }
+
         navigationView.setNavigationItemSelectedListener(this)
 
         Mapbox.getInstance(this, getString(R.string.access_token))
@@ -123,7 +156,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             val features = featureCollection.features()
             val numFeatures = features!!.size
             for (i in 0..numFeatures-1) {
-                val feature = features.get(i)
+                val feature = features[i]
                 val featureGeom = feature.geometry()
                 if (featureGeom is Point) {
                     val jsonObj = feature.properties()
@@ -133,6 +166,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         // Extract properties, show markers and populate marker list
                         val currency = jsonObj.get("currency").toString().replace("\"","")
                         val markerId = jsonObj.get("id").toString().replace("\"","")
+                        // Skip markers that have already been visited
                         if (visitedMarkerIdList.contains(markerId)) {
                             Log.d(tag,"[renderJson] Marker already visited, not rendering it")
                             continue
@@ -154,6 +188,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
+    // Showing user location
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             Log.d(tag, "Permissions are granted")
@@ -219,7 +254,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             originLocation = location
             setCameraPosition(originLocation)
             var removeMarkerId : String? = null
-            // Compute distance to markers and act accordingly
+            // Compute distance to markers to each marker, checking if any is sufficiently close
             for ((markerId, marker) in markerList) {
                 val distToMarker = distanceToMarker(originLocation,marker)
                 // If user sufficiently close, remove marker from map
@@ -230,7 +265,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     visitedMarkerIdList += markerId
                     removeMarkerId = markerId
                     val coin = Coin(marker.snippet, marker.title.toDouble())
-                    walletList.add(coin)
+                    walletList.add(coin.toString())
                     break
                 }
             }
@@ -280,7 +315,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     override fun onExplanationNeeded(permissionsToExplain:
                                      MutableList<String>?) {
         Log.d(tag, "Permissions: $permissionsToExplain")
-        // Present popup message or dialog
     }
 
     override fun onPermissionResult(granted: Boolean) {
@@ -288,7 +322,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         if (granted) {
             enableLocation()
         } else {
-            // Open a dialogue with the user
+            Toast.makeText(this,"Review location permission settings", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -368,8 +402,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Handle navigation drawer click events
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        // Provisionally only handle sign out action which signs out current user and returns him to log in screen
         when (item.itemId) {
+            //Signs out current user upon confirmation and returns him to log in screen
             R.id.sign_out -> {
                 // Confirmation dialog for user to confirm this action
                 val confirmSignOut = AlertDialog.Builder(this)
@@ -379,13 +413,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setPositiveButton("Yes") { _: DialogInterface?, _: Int ->
                     // If user confirms action, he's signed out
                     Log.d(tag,"[onNavigationItemSelected] Signing out user")
-                    FirebaseAuth.getInstance().signOut()
+                    mAuth.signOut()
                     finish()
                     startActivity(Intent(this,LoginActivity::class.java))
                 }
                 // Otherwise nothing happens
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
                 confirmSignOut.show()
+            }
+            // Starts Wallet screen
+            R.id.wallet -> {
+                val walletIntent = Intent(this, WalletActivity::class.java)
+                walletIntent.putStringArrayListExtra("walletCoins",walletList)
+                startActivity(walletIntent)
             }
         }
         return true
