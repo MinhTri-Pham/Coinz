@@ -3,10 +3,12 @@ package com.example.minht.coinz
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.*
 import android.location.Location
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.design.widget.NavigationView
+import android.support.v4.content.ContextCompat
 import android.support.v4.widget.DrawerLayout
 import android.support.v7.app.AlertDialog
 import android.util.Log
@@ -34,9 +36,9 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
-import org.w3c.dom.Text
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -179,12 +181,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             continue
                         }
                         val approxVal =jsonObj.get("value").asFloat
-                        val approxValFormat = String.format("%.2f",approxVal) // Round to 2 decimal digits for readability
+                        val approxValFormat = String.format("%.2f",approxVal) // Round to 3 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
-                        val lat = coordinatesList[1]
-                        val lng = coordinatesList[0]
-                        val featureLatLng = LatLng(lat, lng)
-                        val markerOpts = MarkerOptions().title(approxValFormat).snippet(currency).position(featureLatLng)
+                        val featureLatLng = LatLng(coordinatesList[1], coordinatesList[0])
+                        val colorCode = Color.parseColor(jsonObj.get("marker-color").toString().replace("\"",""))
+                        // Build custom marker icon - colour only
+                        val iconFactory = IconFactory.getInstance(this)
+                        val iconBitmap = getBitmapFromVectorDrawable(this, R.drawable.ic_place_24dp)
+                        val iconColorBitmap = tintImage(iconBitmap,colorCode)
+                        val icon = iconFactory.fromBitmap(iconColorBitmap)
+                        // Build marker
+                        val markerOpts = MarkerOptions().title(approxValFormat).snippet(currency).icon(icon).position(featureLatLng)
                         Log.d(tag, "[renderJson] marker was added into the map and into markerList\n")
                         val marker = map.addMarker(markerOpts)
                         markerList.put(markerId,marker)
@@ -193,6 +200,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             Log.d(tag, "[renderJson] all markers added and markerList populated")
         }
+    }
+
+    private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
+        val drawable = ContextCompat.getDrawable(context, drawableId)
+        val bitmap = Bitmap.createBitmap(drawable!!.intrinsicWidth,
+                drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
+    }
+
+    private fun tintImage(bitmap: Bitmap, color: Int): Bitmap {
+        val paint = Paint()
+        paint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+        val bitmapResult = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmapResult)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        return bitmapResult
     }
 
     // Showing user location
@@ -260,28 +286,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         } else {
             originLocation = location
             setCameraPosition(originLocation)
-            var removeMarkerId : String? = null
+            //var removeMarkerId : String? = null
             // Compute distance to markers to each marker, checking if any is sufficiently close
-            for ((markerId, marker) in markerList) {
+            val mapIt = markerList.entries.iterator()
+            while (mapIt.hasNext()) {
+                val pair = mapIt.next()
+                val markerId = pair.key
+                val marker = pair.value
                 val distToMarker = distanceToMarker(originLocation,marker)
-                // If user sufficiently close, remove marker from map
+                // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
-                    Log.d(tag,"[onLocationChanged] Within collection distance of marker " +
-                            "with id $markerId distance = $distToMarker)")
+                    Log.d(tag,"[onLocationChanged] Close to marker $markerId")
+                    mapIt.remove()
                     map!!.removeMarker(marker)
+                    Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected", Toast.LENGTH_SHORT).show()
                     visitedMarkerIdList.add(markerId)
-                    removeMarkerId = markerId
                     val coin = Coin(marker.snippet, marker.title.toDouble())
                     walletList.add(coin.toString())
-                    break
+                    numDayCollectedCoins++
                 }
-            }
-            markerList.remove(removeMarkerId)
-            if (removeMarkerId != null) {
-                Log.d(tag,"[onLocationChanged] Within collection distance of marker " +
-                        "with id $removeMarkerId removed from map and markerList")
-                numDayCollectedCoins++
-                // If all coins collected,
                 if (numDayCollectedCoins == MAX_COINS) {
                     openCollectAllCoinsDialog()
                 }
