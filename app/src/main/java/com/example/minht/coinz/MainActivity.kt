@@ -88,36 +88,38 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             setDisplayHomeAsUpEnabled(true)
             setHomeAsUpIndicator(R.drawable.ic_menu)
         }
-
         mAuth = FirebaseAuth.getInstance()
-        mDrawerLayout = findViewById(R.id.drawer_layout)
-        val navigationView = findViewById<NavigationView>(R.id.nav_view)
-        val headerView = navigationView.getHeaderView(0)
-        val navText = headerView.findViewById(R.id.nav_text) as TextView
         db = FirebaseFirestore.getInstance()
-        val userId = mAuth.uid
-        val userRef = db.collection(COLLECTION_KEY).document(userId!!)
-        var headerText = ""
-        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
-            if (documentSnapshot!!.exists()) {
-                val username = documentSnapshot.getString(USERNAME_KEY)
-                val email = documentSnapshot.getString(EMAIL_KEY)
-                headerText = "Welcome back $username!\n$email"
-                navText.text = headerText
-                Log.d(tag,"[onCreate] Created welcome message")
-            } else {
-                Log.d(tag,"[onCreate] User document not found")
-            }
-        }
-
-        navigationView.setNavigationItemSelectedListener(this)
-
+        setUpNavDrawer()
         Mapbox.getInstance(this, getString(R.string.access_token))
 
         // Need findViewById for a com.mapbox.mapboxsdk.maps.MapView
         mapView = findViewById(R.id.mapboxMapView)
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
+    }
+
+    // Sets up nav drawer with custom header
+    // Make it listen for menu item clicks
+    private fun setUpNavDrawer() {
+        mDrawerLayout = findViewById(R.id.drawer_layout)
+        val navigationView = findViewById<NavigationView>(R.id.nav_view)
+        val headerView = navigationView.getHeaderView(0)
+        val navText = headerView.findViewById(R.id.nav_text) as TextView
+        val userId = mAuth.uid
+        val userRef = db.collection(COLLECTION_KEY).document(userId!!)
+        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
+            if (documentSnapshot!!.exists()) {
+                val username = documentSnapshot.getString(USERNAME_KEY)
+                val email = documentSnapshot.getString(EMAIL_KEY)
+                val headerText = "Welcome back $username!\n$email"
+                navText.text = headerText
+                Log.d(tag,"[onCreate] Created welcome message")
+            } else {
+                Log.d(tag,"[onCreate] User document not found")
+            }
+        }
+        navigationView.setNavigationItemSelectedListener(this)
     }
 
     // Returns today's date in format: YYYY/MM/DD
@@ -456,7 +458,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // Handle navigation drawer click events
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            //Signs out current user upon confirmation and returns him to log in screen
+            //Signs out current user upon confirmation and returns him to Log in screen
             R.id.sign_out -> {
                 // Confirmation dialog for user to confirm this action
                 val confirmSignOut = AlertDialog.Builder(this)
@@ -479,6 +481,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val walletIntent = Intent(this, WalletActivity::class.java)
                 walletIntent.putStringArrayListExtra("coinsList",walletList)
                 startActivity(walletIntent)
+            }
+            // Starts screen for selecting recipient of the transfer
+            R.id.transfer -> {
+                startActivity(Intent(this, SelectRecipientActivity::class.java))
             }
         }
         return true

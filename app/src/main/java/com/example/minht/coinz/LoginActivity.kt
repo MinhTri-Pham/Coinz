@@ -10,6 +10,8 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 
 class LoginActivity : AppCompatActivity() {
@@ -28,13 +30,9 @@ class LoginActivity : AppCompatActivity() {
         mAuth = FirebaseAuth.getInstance()
         loginButton = findViewById<View>(R.id.loginButton) as Button
         // Handle login button and register link click
-        loginButton.setOnClickListener(View.OnClickListener {
-            view -> loginUser()
-        })
+        loginButton.setOnClickListener{ _ -> loginUser() }
         registerLink = findViewById<View>(R.id.signUpLink) as TextView
-        registerLink.setOnClickListener(View.OnClickListener {
-            view -> switchToRegister()
-        })
+        registerLink.setOnClickListener { _ -> switchToRegister() }
     }
 
     // Invoked when user presses the Log in button
@@ -47,7 +45,7 @@ class LoginActivity : AppCompatActivity() {
         // Check if email and password text fields are empty
         if (!email.isEmpty() && !password.isEmpty()) {
             // Check validity of credentials, warn user if invalid
-            mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener(this, OnCompleteListener { task ->
+            mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener{task: Task<AuthResult> ->
                 if (task.isSuccessful) {
                     Log.d(tag, "[loginUser] User logged in successfully")
                     startActivity(Intent(this,MainActivity::class.java))
@@ -56,7 +54,7 @@ class LoginActivity : AppCompatActivity() {
                     Log.d(tag, "[loginUser] Authentication failed since credentials were incorrect")
                     Toast.makeText(this,"Email or password wasn't correct", Toast.LENGTH_SHORT).show()
                 }
-            })
+            }
         // If credentials empty warn user about this
         } else {
             Log.d(tag, "[loginUser] Authentication failed since credentials were incorrect")

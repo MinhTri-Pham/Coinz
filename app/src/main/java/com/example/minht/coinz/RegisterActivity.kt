@@ -11,6 +11,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.OnSuccessListener
+import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
@@ -43,13 +45,8 @@ class RegisterActivity : AppCompatActivity() {
         loginLink = findViewById<View>(R.id.signInLink) as TextView
 
         // Handle register button and login link click
-        registerButton.setOnClickListener(View.OnClickListener {
-            view -> registerUser()
-        })
-
-        loginLink.setOnClickListener(View.OnClickListener {
-            view -> switchToLogin()
-        })
+        registerButton.setOnClickListener { _ -> registerUser() }
+        loginLink.setOnClickListener{ _ -> switchToLogin() }
     }
 
     // Invoked when user presses the Log in button
@@ -65,9 +62,9 @@ class RegisterActivity : AppCompatActivity() {
         // Check if email and password text fields are empty
         if (!username.isEmpty() && !email.isEmpty() && !password.isEmpty()) {
             // Check validity of credentials, warn if invalid
-            mAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener(this, OnCompleteListener { task ->
+            mAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener{ task: Task<AuthResult> ->
                 if (task.isSuccessful) {
-                    Log.d(tag,"[registerUser] Registration was successful, update Firestore database")
+                    Log.d(tag,"[registerUser] Registration was successful, update FireStore database")
                     // Create document for user in "Users" collection with fields for username and email
                     val user : HashMap<String, Any> = HashMap();
                     user.put(USERNAME_KEY, username)
@@ -82,7 +79,7 @@ class RegisterActivity : AppCompatActivity() {
                     Log.d(tag,"[registerUser] Registration failed due to bad credentials")
                     Toast.makeText(this, "Couldn't register, try different credentials", Toast.LENGTH_SHORT).show()
                 }
-            })
+            }
         } else {
             // If credentials empty warn user about this
             Log.d(tag,"[registerUser] Registration failed because input was empty")
