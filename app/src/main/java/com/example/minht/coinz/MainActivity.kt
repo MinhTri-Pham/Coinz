@@ -9,7 +9,9 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.v4.content.ContextCompat
+import android.support.v4.view.GravityCompat
 import android.support.v4.widget.DrawerLayout
+import android.support.v7.app.ActionBar
 import android.support.v7.app.AlertDialog
 import android.util.Log
 import android.view.MenuItem
@@ -81,6 +83,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
+        val actionbar: ActionBar? = supportActionBar
+        actionbar?.apply {
+            setDisplayHomeAsUpEnabled(true)
+            setHomeAsUpIndicator(R.drawable.ic_menu)
+        }
 
         mAuth = FirebaseAuth.getInstance()
         mDrawerLayout = findViewById(R.id.drawer_layout)
@@ -427,11 +434,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
+    // Render markers when coin map is downloaded
     override fun downloadComplete(result: String) {
         geoJsonString = result
         Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data $geoJsonString")
         // Render markers after download was completed
         renderJson(map, geoJsonString)
+    }
+
+    // Open Navigation drawer when menu item clicked
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                mDrawerLayout.openDrawer(GravityCompat.START)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     // Handle navigation drawer click events
