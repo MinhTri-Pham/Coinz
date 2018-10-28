@@ -213,6 +213,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
+    // Gets bitmap from a vector drawable
     private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
         val drawable = ContextCompat.getDrawable(context, drawableId)
         val bitmap = Bitmap.createBitmap(drawable!!.intrinsicWidth,
@@ -223,6 +224,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         return bitmap
     }
 
+    // Colours bitmap with a specified oolour
     private fun tintImage(bitmap: Bitmap, color: Int): Bitmap {
         val paint = Paint()
         paint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
