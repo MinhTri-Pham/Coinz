@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Coin collection mechanism variables
     private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-    private val MAX_COINS = 50; // Maximum number of coins that can be collected on per day
+    private val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
     private var numDayCollectedCoins = 0; // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
@@ -105,15 +105,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mDrawerLayout = findViewById(R.id.drawer_layout)
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         val headerView = navigationView.getHeaderView(0)
-        val navText = headerView.findViewById(R.id.nav_text) as TextView
+        val navUsernameText = headerView.findViewById(R.id.nav_text_username) as TextView
+        val navEmailText = headerView.findViewById(R.id.nav_text_email) as TextView
         val userId = mAuth.uid
         val userRef = db.collection(COLLECTION_KEY).document(userId!!)
         userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
             if (documentSnapshot!!.exists()) {
                 val username = documentSnapshot.getString(USERNAME_KEY)
                 val email = documentSnapshot.getString(EMAIL_KEY)
-                val headerText = "Welcome back $username!\n$email"
-                navText.text = headerText
+                val usernameText = "Welcome back $username!"
+                navUsernameText.text = usernameText
+                navEmailText.text = email
                 Log.d(tag,"[onCreate] Created welcome message")
             } else {
                 Log.d(tag,"[onCreate] User document not found")
@@ -314,7 +316,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     walletList.add(coin.toString())
                     numDayCollectedCoins++
                 }
-                if (numDayCollectedCoins == MAX_COINS) {
+                if (numDayCollectedCoins == MAX_DAILY_COINS) {
                     openCollectAllCoinsDialog()
                 }
             }
