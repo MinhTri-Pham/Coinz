@@ -6,16 +6,14 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.ListView
-import android.widget.TextView
+import android.widget.*
 
 class WalletActivity : AppCompatActivity() {
 
     private val tag = "WalletActivity" // For logging purposes
     private val preferencesFile = "MyPrefsFile"
     private var coinList : ArrayList<String> = ArrayList()
+    private var selectedCoinsList : ArrayList<String> = ArrayList()
     private lateinit var viewAdapter : ArrayAdapter<String>
     private lateinit var coinListView : ListView
     private lateinit var sendButton: Button
@@ -23,11 +21,17 @@ class WalletActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wallet)
-        // Handle button clicks
+        // Handle button click
         sendButton = findViewById(R.id.send_coins_button)
-        sendButton.setOnClickListener {_ ->
-            startActivity(Intent(this,SelectRecipientActivity::class.java))
+        sendButton.setOnClickListener { _ ->
+            // Check if any coins were selected before proceeding to the next screen
+            if (selectedCoinsList.size != 0) {
+                startActivity(Intent(this, SelectRecipientActivity::class.java))
+            } else {
+                Toast.makeText(this, "Select some coins for transfer!", Toast.LENGTH_SHORT).show()
+            }
         }
+
     }
 
     // Displays state of the wallet as a checkbox list of coins
@@ -45,6 +49,16 @@ class WalletActivity : AppCompatActivity() {
             coinListView.choiceMode = ListView.CHOICE_MODE_MULTIPLE
             viewAdapter = ArrayAdapter(this,R.layout.row_layout,R.id.text_checkbox,coinList)
             coinListView.adapter = viewAdapter
+            // Listen for which items are selected
+            coinListView.setOnItemClickListener { adapterView, view, i, l ->
+                val selectedItemTextView = view as TextView
+                val selectedItem = selectedItemTextView.text.toString()
+                if (selectedCoinsList.contains(selectedItem)) {
+                    selectedCoinsList.remove(selectedItem) // Unchecking item
+                } else {
+                    selectedCoinsList.add(selectedItem)
+                }
+            }
         }
     }
 

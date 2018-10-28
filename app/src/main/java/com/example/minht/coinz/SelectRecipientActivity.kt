@@ -40,7 +40,7 @@ class SelectRecipientActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     if (!task.result!!.isEmpty) {
                         Toast.makeText(this, "User found, proceed to choosing coins", Toast.LENGTH_SHORT).show()
-                        // Start next activity
+                        makeTransfer()
                     } else {
                         Toast.makeText(this, "Such user doesn't exist, try a different username", Toast.LENGTH_SHORT).show()
                     }
@@ -53,5 +53,9 @@ class SelectRecipientActivity : AppCompatActivity() {
             Log.d(tag,"[findUsername] Can't query since input was empty")
             Toast.makeText(this, "Please choose a player to send coins to", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun makeTransfer() {
+
     }
 }
