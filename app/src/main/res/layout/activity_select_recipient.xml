@@ -26,10 +26,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:text="Enter the username of player to whom you wish to send coins. Then press the button to select coins to send."
+            android:text="Enter the username of player to whom you wish to send coins."
             android:textAlignment="center"
             android:textColor="@android:color/background_dark"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
 
         <EditText
@@ -45,7 +45,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:text="Confirm Username" />
+            android:text="Confirm Transfer" />
 
     </LinearLayout>
 

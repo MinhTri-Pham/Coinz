@@ -483,12 +483,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             // Starts Wallet screen
             R.id.wallet -> {
                 val walletIntent = Intent(this, WalletActivity::class.java)
-                walletIntent.putStringArrayListExtra("coinsList",walletList)
                 startActivity(walletIntent)
-            }
-            // Starts screen for selecting recipient of the transfer
-            R.id.transfer -> {
-                startActivity(Intent(this, SelectRecipientActivity::class.java))
             }
         }
         return true
