@@ -35,8 +35,7 @@
         </activity>
         <activity
             android:name=".WalletActivity"
-            android:label="Wallet"
-            android:parentActivityName=".MainActivity" >
+            android:label="Wallet" >
         </activity>
         <activity
             android:name=".SelectRecipientActivity"

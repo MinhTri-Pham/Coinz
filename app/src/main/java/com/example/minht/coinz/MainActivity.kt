@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         uid = mAuth.uid!!
         db = FirebaseFirestore.getInstance()
         setUpNavDrawer()
+        loadWallet() // Load wallet from Firestore
         Mapbox.getInstance(this, getString(R.string.access_token))
 
         // Need findViewById for a com.mapbox.mapboxsdk.maps.MapView
@@ -386,8 +387,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         geoJsonString = settings.getString("lastCoinMap","")
         numDayCollectedCoins = settings.getString("numDayCollectedCoins","0").toInt()
         visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
-        // Get user's wallet list from FireStore
-        val gson = Gson()
+        // Write a message to ”logcat” (for debugging purposes)
+        Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
+        Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
+        Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
+        Log.d(tag, "[onStart] Recalled visited markers")
+        /*val gson = Gson()
         // Find JSON respresentation in FireStore
         // User document
         val userDocRef = db.collection(COLLECTION_KEY).document(uid)
@@ -405,15 +410,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             } else {
                 Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
             }
-        }
-        /*val walletSet = settings.getStringSet("walletList", mutableSetOf())
-        walletList.clear()
-        walletList.addAll(walletSet)*/
-        // Write a message to ”logcat” (for debugging purposes)
-        Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
-        Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
-        Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
-        Log.d(tag, "[onStart] Recalled visited markers")
+        }*/
     }
 
     public override fun onResume() {
@@ -441,12 +438,40 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(tag, "[onStop] Stored lastCoinMap as $geoJsonString")
         Log.d(tag, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
         Log.d(tag, "[onStop] Stored visited markers")
-        // Store user's wallet in Firestore
-        // In order to access other user's wallet as well for sending coins
+
+        /*val gson = Gson()
+        val json = gson.toJson(walletList)
+        db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
+        Log.d(tag, "[onStop] Stored wallet state as $json")*/
+    }
+    // Store user's wallet in Firestore
+    private fun saveWallet() {
         val gson = Gson()
         val json = gson.toJson(walletList)
         db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
         Log.d(tag, "[onStop] Stored wallet state as $json")
+    }
+
+    // Load wallet from Firestore
+    private fun loadWallet() {
+        val gson = Gson()
+        // Find JSON respresentation of user's wallet in FireStore
+        val userDocRef = db.collection(COLLECTION_KEY).document(uid)
+        userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
+            if (task.isSuccessful) {
+                val walletString = task.result!!.get(WALLET_KEY).toString()
+                Log.d(tag,"[onStart] JSON representation of wallet: $walletString")
+                if (walletString.equals("[]")) {
+                    walletList = ArrayList()
+                } else {
+                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
+                    walletList = gson.fromJson(walletString, type)
+                }
+
+            } else {
+                Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
+            }
+        }
     }
 
     override fun onLowMemory() {
@@ -487,6 +512,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Handle navigation drawer click events
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
+
         when (item.itemId) {
             //Signs out current user upon confirmation and returns him to Log in screen
             R.id.sign_out -> {
@@ -496,7 +522,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setMessage("Are you sure that you want to sign out from the game?")
                 confirmSignOut.setCancelable(false)
                 confirmSignOut.setPositiveButton("Yes") { _: DialogInterface?, _: Int ->
-                    // If user confirms action, he's signed out
+                    // If user confirms action
+                    // Save wallet into FireStore and sign out
+                    saveWallet()
                     Log.d(tag,"[onNavigationItemSelected] Signing out user $uid")
                     mAuth.signOut()
                     Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
@@ -508,10 +536,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
                 confirmSignOut.show()
             }
-            // Starts Wallet screen
+            // Saves wallet and starts Wallet screen
             R.id.wallet -> {
-                val walletIntent = Intent(this, WalletActivity::class.java)
-                startActivity(walletIntent)
+                saveWallet()
+                startActivity(Intent(this,WalletActivity::class.java))
             }
         }
         return true

@@ -46,6 +46,7 @@ class WalletActivity : AppCompatActivity() {
 
     }
 
+    // Prepare list for displaying coins
     private fun makeDisplayCoinList() {
         for (coin in coinList) {
             displayCoinList.add(coin.toString())
@@ -84,8 +85,7 @@ class WalletActivity : AppCompatActivity() {
         super.onStart()
         Log.d(tag,"[onStart] Recalling list of coins in the wallet")
         val gson = Gson()
-        // Find JSON respresentation in FireStore
-        // User document
+        // Find JSON representation of user's wallet in FireStore
         val userDocRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
         userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
@@ -98,19 +98,15 @@ class WalletActivity : AppCompatActivity() {
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
                     Log.d(tag,"[onStart] Restored coins")
                     coinList = gson.fromJson(walletString, type)
+                    makeDisplayCoinList()
+                    Log.d(tag,"[onStart] Displaying list of coins in the wallet")
+                    displayCoins()
                 }
 
             } else {
                 Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
             }
         }
-        /*val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        val coinSet = settings.getStringSet("walletList", mutableSetOf())
-        coinList.clear()
-        coinList.addAll(coinSet)*/
-        makeDisplayCoinList()
-        Log.d(tag,"[onStart] Displaying list of coins in the wallet")
-        displayCoins()
     }
 
     override fun onStop() {
@@ -124,9 +120,6 @@ class WalletActivity : AppCompatActivity() {
         val walletState : HashMap<String, Any> = HashMap();
         walletState.put(WALLET_KEY,json)
         db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(walletState)
-        /*val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        val editor = settings.edit()
-        editor.putStringSet("walletList", coinList.toSet())
-        editor.apply()*/
+
     }
 }
