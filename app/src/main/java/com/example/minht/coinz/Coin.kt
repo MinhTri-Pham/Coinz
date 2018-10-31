@@ -1,11 +1,15 @@
 package com.example.minht.coinz
 
-import com.mapbox.mapboxsdk.geometry.LatLng
+ class Coin (val id: String, val currency: String, val valueInGold : Double) {
 
-class Coin (val currency: String, val valueInGold : Double) {
+     override fun equals(other: Any?): Boolean {
+         if (other !is Coin) {
+             return false
+         } else {
+             return id == other.id
+         }
+     }
 
-    // For displaying in the wallet
-    // Only approximate value shown for better user readability
-    override fun toString() : String =  "$currency, Value: " + String.format("%.5f",valueInGold)
+     override fun toString() : String =  "$currency, Value: $valueInGold"
 
 }

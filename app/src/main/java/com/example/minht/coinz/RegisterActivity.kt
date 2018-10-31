@@ -16,13 +16,15 @@ import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.gson.Gson
 
 class RegisterActivity : AppCompatActivity() {
 
     private val tag = "RegisterActivity" // Logging purposes
     private val COLLECTION_KEY = "Users"
-    private val USERNAME_KEY = "Username"
-    private val EMAIL_KEY = "Email"
+    private val USERNAME_KEY = "Username" // Holds username of user
+    private val EMAIL_KEY = "Email" // Holds email of user
+    private val WALLET_KEY = "Wallet" // Holds JSON representation of collected coins by user
     private lateinit var mAuth : FirebaseAuth
     private lateinit var db : FirebaseFirestore
     private lateinit var registerButton : Button
@@ -40,7 +42,7 @@ class RegisterActivity : AppCompatActivity() {
         val settings = FirebaseFirestoreSettings.Builder()
                 .setTimestampsInSnapshotsEnabled(true)
                 .build()
-        db?.firestoreSettings = settings
+        db.firestoreSettings = settings
         registerButton = findViewById<View>(R.id.buttonRegister) as Button
         loginLink = findViewById<View>(R.id.signInLink) as TextView
 
@@ -69,6 +71,9 @@ class RegisterActivity : AppCompatActivity() {
                     val user : HashMap<String, Any> = HashMap();
                     user.put(USERNAME_KEY, username)
                     user.put(EMAIL_KEY,email)
+                    val emptyWallet = ArrayList<Coin>()
+                    val gson = Gson();
+                    user.put(WALLET_KEY, gson.toJson(emptyWallet)) // Initially empty wallet
                     db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{
                         _: Void? -> Log.d(tag,"[registerUser] Successfully updated database")
                     }.addOnFailureListener {

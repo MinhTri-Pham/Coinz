@@ -17,9 +17,12 @@ import android.util.Log
 import android.view.MenuItem
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
@@ -64,20 +67,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // Coin collection mechanism variables
     private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
     private val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
+    private val MAX_COINS_LIMIT = 1000;
     private var numDayCollectedCoins = 0; // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
-    private var walletList : ArrayList<String> = ArrayList()  // Set of coins in user's wallet
-                                                                  // Chaneg in design - wallet can't contain coins with same id
+    private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
 
     private val preferencesFile = "MyPrefsFile" // For storing preferences
 
     // Firebase/Firestore variables
     private lateinit var mAuth: FirebaseAuth
+    private lateinit var uid : String
     private lateinit var db : FirebaseFirestore
     private val COLLECTION_KEY = "Users"
     private val USERNAME_KEY = "Username"
     private val EMAIL_KEY = "Email"
+    private val WALLET_KEY = "Wallet"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +94,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             setHomeAsUpIndicator(R.drawable.ic_menu)
         }
         mAuth = FirebaseAuth.getInstance()
+        uid = mAuth.uid!!
         db = FirebaseFirestore.getInstance()
         setUpNavDrawer()
         Mapbox.getInstance(this, getString(R.string.access_token))
@@ -107,8 +113,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val headerView = navigationView.getHeaderView(0)
         val navUsernameText = headerView.findViewById(R.id.nav_text_username) as TextView
         val navEmailText = headerView.findViewById(R.id.nav_text_email) as TextView
-        val userId = mAuth.uid
-        val userRef = db.collection(COLLECTION_KEY).document(userId!!)
+        val userRef = db.collection(COLLECTION_KEY).document(uid)
         userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
             if (documentSnapshot!!.exists()) {
                 val username = documentSnapshot.getString(USERNAME_KEY)
@@ -142,6 +147,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             map?.uiSettings?.isZoomControlsEnabled = true
             // Make location information available
             enableLocation()
+            // Warn user if wallet is full
+            if (walletList.size == MAX_COINS_LIMIT) {
+                Toast.makeText(this,"Can't collect coins, clean up your wallet!", Toast.LENGTH_SHORT).show()
+            }
             // Get current date
             val currDate = getCurrentDate()
             if (currDate.equals(downloadDate)) {
@@ -192,7 +201,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             continue
                         }
                         val approxVal =jsonObj.get("value").asFloat
-                        val approxValFormat = String.format("%.2f",approxVal) // Round to 3 decimal digits for readability
+                        val approxValFormat = String.format("%.5f",approxVal) // Round to 3 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
                         val featureLatLng = LatLng(coordinatesList[1], coordinatesList[0])
                         val colorCode = Color.parseColor(jsonObj.get("marker-color").toString().replace("\"",""))
@@ -296,10 +305,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
             Log.d(tag, "[onLocationChanged] location is null")
+        // No need to check distances if wallet is false
+        } else if (walletList.size == MAX_COINS_LIMIT) {
+            return
         } else {
             originLocation = location
             setCameraPosition(originLocation)
-            //var removeMarkerId : String? = null
             // Compute distance to markers to each marker, checking if any is sufficiently close
             val mapIt = markerList.entries.iterator()
             while (mapIt.hasNext()) {
@@ -314,8 +325,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     map!!.removeMarker(marker)
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected", Toast.LENGTH_SHORT).show()
                     visitedMarkerIdList.add(markerId)
-                    val coin = Coin(marker.snippet, marker.title.toDouble())
-                    walletList.add(coin.toString())
+                    val coin = Coin(markerId,marker.snippet, marker.title.toDouble())
+                    walletList.add(coin)
                     numDayCollectedCoins++
                 }
                 if (numDayCollectedCoins == MAX_DAILY_COINS) {
@@ -375,17 +386,34 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         geoJsonString = settings.getString("lastCoinMap","")
         numDayCollectedCoins = settings.getString("numDayCollectedCoins","0").toInt()
         visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
-        val walletSet = settings.getStringSet("walletList", mutableSetOf())
+        // Get user's wallet list from FireStore
+        val gson = Gson()
+        // Find JSON respresentation in FireStore
+        // User document
+        val userDocRef = db.collection(COLLECTION_KEY).document(uid)
+        userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
+            if (task.isSuccessful) {
+                val walletString = task.result!!.get(WALLET_KEY).toString()
+                Log.d(tag,"[onStart] JSON representation of wallet: $walletString")
+                if (walletString.equals("[]")) {
+                    walletList = ArrayList()
+                } else {
+                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
+                    walletList = gson.fromJson(walletString, type)
+                }
+
+            } else {
+                Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
+            }
+        }
+        /*val walletSet = settings.getStringSet("walletList", mutableSetOf())
         walletList.clear()
-        walletList.addAll(walletSet)
+        walletList.addAll(walletSet)*/
         // Write a message to ”logcat” (for debugging purposes)
         Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
         Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
-        Log.d(tag, "[onStart] Recalled visited markers:\n")
-        for (visitedMarkerId in visitedMarkerIdList) {
-            Log.d(tag, visitedMarkerId)
-        }
+        Log.d(tag, "[onStart] Recalled visited markers")
     }
 
     public override fun onResume() {
@@ -401,26 +429,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStop() {
         super.onStop()
         mapView?.onStop()
-        Log.d(tag, "[onStop] Storing lastDownloadDate of $downloadDate")
-        Log.d(tag, "[onStop] Storing lastCoinMap as $geoJsonString")
-        Log.d(tag, "[onStop] Number of collected coins as $numDayCollectedCoins")
-        // Store values for persistence
+        // Store map values in Shared Preferences
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         val editor = settings.edit()
         editor.putString("lastDownloadDate", downloadDate)
         editor.putString("lastCoinMap",geoJsonString)
         editor.putString("numDayCollectedCoins", numDayCollectedCoins.toString())
         editor.putStringSet("visitedMarkers", visitedMarkerIdList)
-        Log.d(tag, "[onStop] Storing visited markers:\n")
-        for (visitedMarkerId in visitedMarkerIdList) {
-            Log.d(tag, visitedMarkerId)
-        }
-        editor.putStringSet("walletList", walletList.toSet())
-        Log.d(tag, "[onStop] Storing coins in user's wallet:\n")
-        for (coinString in walletList) {
-            Log.d(tag, coinString)
-        }
         editor.apply()
+        Log.d(tag, "[onStop] Stored lastDownloadDate of $downloadDate")
+        Log.d(tag, "[onStop] Stored lastCoinMap as $geoJsonString")
+        Log.d(tag, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
+        Log.d(tag, "[onStop] Stored visited markers")
+        // Store user's wallet in Firestore
+        // In order to access other user's wallet as well for sending coins
+        val gson = Gson()
+        val json = gson.toJson(walletList)
+        db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
+        Log.d(tag, "[onStop] Stored wallet state as $json")
     }
 
     override fun onLowMemory() {
@@ -471,10 +497,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setCancelable(false)
                 confirmSignOut.setPositiveButton("Yes") { _: DialogInterface?, _: Int ->
                     // If user confirms action, he's signed out
-                    Log.d(tag,"[onNavigationItemSelected] Signing out user")
+                    Log.d(tag,"[onNavigationItemSelected] Signing out user $uid")
                     mAuth.signOut()
-                    finish()
+                    Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this,LoginActivity::class.java))
+                    finish()
+
                 }
                 // Otherwise nothing happens
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
@@ -488,4 +516,5 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
         return true
     }
+
 }
