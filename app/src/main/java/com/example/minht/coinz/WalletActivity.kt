@@ -14,19 +14,23 @@ import com.google.gson.reflect.TypeToken
 
 class WalletActivity : AppCompatActivity() {
 
-    private val tag = "WalletActivity" // For logging purposes
-    //private val preferencesFile = "MyPrefsFile"
     private var coinList : ArrayList<Coin> = ArrayList()
     private var displayCoinList : ArrayList<String> = ArrayList()
-    private var selectedCoinsList : ArrayList<String> = ArrayList()
+    private var selectedDisplayCoinsList : ArrayList<String> = ArrayList()
     private lateinit var viewAdapter : ArrayAdapter<String>
     private lateinit var coinListView : ListView
     private lateinit var sendButton: Button
 
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db : FirebaseFirestore
-    private var COLLECTION_KEY = "Users"
-    private var WALLET_KEY = "Wallet"
+    private lateinit var gson : Gson
+
+    companion object {
+        const val TAG = "WalletActivity" // For logging purposes
+        const val COLLECTION_KEY = "Users"
+        const val WALLET_KEY = "Wallet"
+        const val SELECTED_COINS_KEY="Selected coins"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +38,16 @@ class WalletActivity : AppCompatActivity() {
         // Handle button click
         mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
+        gson = Gson()
         sendButton = findViewById(R.id.send_coins_button)
         sendButton.setOnClickListener { _ ->
             // Check if any coins were selected before proceeding to the next screen
-            if (selectedCoinsList.size != 0) {
-                startActivity(Intent(this, SelectRecipientActivity::class.java))
+            if (selectedDisplayCoinsList.size != 0) {
+                // Pass JSON representation of selected coins to next activity
+                val selectedCoinListJSON = makeSelectedCoinList(selectedDisplayCoinsList)
+                val selectRecipientIntent = Intent(this,SelectRecipientActivity::class.java)
+                selectRecipientIntent.putExtra(SELECTED_COINS_KEY,selectedCoinListJSON)
+                startActivity(selectRecipientIntent)
             } else {
                 Toast.makeText(this, "Select some coins for transfer!", Toast.LENGTH_SHORT).show()
             }
@@ -56,10 +65,11 @@ class WalletActivity : AppCompatActivity() {
     // Displays state of the wallet as a checkbox list of coins
     private fun displayCoins() {
         val walletStateTextView = findViewById<TextView>(R.id.wallet_state)
-        val numCoins = displayCoinList.size
+        val numCoins = coinList.size
         if (numCoins == 0) {
+            Log.d(TAG, "[displayCoins] No coins to display")
             val walletStateText = "Coins in the wallet: 0 / 1000 \n Collect coins on the map" +
-                    " or check for any unopened gifts!"
+            " or check for any unopened gifts!"
             walletStateTextView.text = walletStateText
         } else {
             val walletStateText = "Coins in the wallet: $numCoins / 1000"
@@ -69,57 +79,63 @@ class WalletActivity : AppCompatActivity() {
             viewAdapter = ArrayAdapter(this,R.layout.row_layout,R.id.text_checkbox,displayCoinList)
             coinListView.adapter = viewAdapter
             // Listen for which items are selected
-            coinListView.setOnItemClickListener { adapterView, view, i, l ->
+            coinListView.setOnItemClickListener { _, view, _, _ ->
                 val selectedItemTextView = view as TextView
                 val selectedItem = selectedItemTextView.text.toString()
-                if (selectedCoinsList.contains(selectedItem)) {
-                    selectedCoinsList.remove(selectedItem) // Unchecking item
+                if (selectedDisplayCoinsList.contains(selectedItem)) {
+                    selectedDisplayCoinsList.remove(selectedItem) // Unchecking item
                 } else {
-                    selectedCoinsList.add(selectedItem)
+                    selectedDisplayCoinsList.add(selectedItem)
                 }
             }
+            Log.d(TAG, "[displayCoins] Coins to displayed")
         }
+    }
+
+    // Make JSON representation of selected coins from their string representation
+    private fun makeSelectedCoinList(coinStrings : ArrayList<String>) : String {
+        val selectedCoinList : ArrayList<Coin> = ArrayList()
+        for (coinString in coinStrings) {
+            val currency = coinString.substring(0,4)
+            val value = coinString.substring(coinString.indexOf(":")+2,coinString.indexOf(":")+7).toDouble()
+            val id = coinString.substring(coinString.indexOf("Id:")+4)
+            val selectedCoin = Coin(id,currency,value)
+            selectedCoinList.add(selectedCoin)
+        }
+        return gson.toJson(selectedCoinList)
     }
 
     override fun onStart() {
         super.onStart()
-        Log.d(tag,"[onStart] Recalling list of coins in the wallet")
-        val gson = Gson()
+        Log.d(TAG,"[onStart] Recalling list of coins in the wallet")
         // Find JSON representation of user's wallet in FireStore
         val userDocRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
         userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
                 val walletString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(tag,"[onStart] JSON representation of wallet $walletString")
+                Log.d(TAG,"[onStart] JSON representation of wallet $walletString")
                 if (walletString.equals("[]")) {
-                    Log.d(tag,"[onStart] No coins collected yet")
+                    Log.d(TAG,"[onStart] No coins collected yet")
                     coinList = ArrayList()
+
                 } else {
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
-                    Log.d(tag,"[onStart] Restored coins")
                     coinList = gson.fromJson(walletString, type)
+                    Log.d(TAG,"[onStart] Restored coins")
                     makeDisplayCoinList()
-                    Log.d(tag,"[onStart] Displaying list of coins in the wallet")
-                    displayCoins()
+                    Log.d(TAG,"[onStart] Displaying list of coins in the wallet")
                 }
-
+                displayCoins()
             } else {
-                Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
+                Log.d(TAG,"[onStart] Failed to extract JSON representation of wallet state")
             }
         }
     }
 
     override fun onStop() {
         super.onStop()
-        Log.d(tag,"[onStop] Storing list of coins in the wallet")
-        val gson = Gson()
-        var json = ""
-        if (!coinList.isEmpty()) {
-            json = gson.toJson(coinList)
-        }
-        val walletState : HashMap<String, Any> = HashMap();
-        walletState.put(WALLET_KEY,json)
-        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(walletState)
-
+        val json = gson.toJson(coinList)
+        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(WALLET_KEY,json)
+        Log.d(TAG, "[onStop] Stored wallet state as $json")
     }
 }

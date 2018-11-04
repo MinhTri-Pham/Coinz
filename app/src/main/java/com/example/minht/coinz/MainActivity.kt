@@ -57,32 +57,37 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
     private lateinit var mDrawerLayout : DrawerLayout
-    private var downloadDate = "" // Format: YYYY/MM/DD
-    private var geoJsonString = "" // String with GeoJSON data
     private lateinit var originLocation: Location
     private lateinit var permissionsManager: PermissionsManager
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Coin collection mechanism variables
-    private val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-    private val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
-    private val MAX_COINS_LIMIT = 1000;
     private var numDayCollectedCoins = 0; // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
 
+    // Shared preferences
     private val preferencesFile = "MyPrefsFile" // For storing preferences
+    private var downloadDate = "" // Format: YYYY/MM/DD
+    private var geoJsonString = "" // String with GeoJSON data
 
     // Firebase/Firestore variables
     private lateinit var mAuth: FirebaseAuth
     private lateinit var uid : String
     private lateinit var db : FirebaseFirestore
-    private val COLLECTION_KEY = "Users"
-    private val USERNAME_KEY = "Username"
-    private val EMAIL_KEY = "Email"
-    private val WALLET_KEY = "Wallet"
+
+    // Constants
+    companion object {
+        const val COLLECTION_KEY = "Users"
+        const val USERNAME_KEY = "Username"
+        const val EMAIL_KEY = "Email"
+        const val WALLET_KEY = "Wallet"
+        const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
+        const val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
+        const val MAX_COINS_LIMIT = 1000;
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,7 +102,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         uid = mAuth.uid!!
         db = FirebaseFirestore.getInstance()
         setUpNavDrawer()
-        loadWallet() // Load wallet from Firestore
         Mapbox.getInstance(this, getString(R.string.access_token))
 
         // Need findViewById for a com.mapbox.mapboxsdk.maps.MapView
@@ -202,7 +206,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             continue
                         }
                         val approxVal =jsonObj.get("value").asFloat
-                        val approxValFormat = String.format("%.5f",approxVal) // Round to 3 decimal digits for readability
+                        val approxValFormat = String.format("%.3f",approxVal) // Round to 3 decimal digits for readability
                         val coordinatesList = featureGeom.coordinates()
                         val featureLatLng = LatLng(coordinatesList[1], coordinatesList[0])
                         val colorCode = Color.parseColor(jsonObj.get("marker-color").toString().replace("\"",""))
@@ -392,25 +396,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
         Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
         Log.d(tag, "[onStart] Recalled visited markers")
-        /*val gson = Gson()
-        // Find JSON respresentation in FireStore
-        // User document
-        val userDocRef = db.collection(COLLECTION_KEY).document(uid)
-        userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
-            if (task.isSuccessful) {
-                val walletString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(tag,"[onStart] JSON representation of wallet: $walletString")
-                if (walletString.equals("[]")) {
-                    walletList = ArrayList()
-                } else {
-                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
-                    walletList = gson.fromJson(walletString, type)
-                }
-
-            } else {
-                Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
-            }
-        }*/
+        loadWallet() // Load wallet from Firestore
     }
 
     public override fun onResume() {
@@ -438,12 +424,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(tag, "[onStop] Stored lastCoinMap as $geoJsonString")
         Log.d(tag, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
         Log.d(tag, "[onStop] Stored visited markers")
-
-        /*val gson = Gson()
-        val json = gson.toJson(walletList)
-        db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
-        Log.d(tag, "[onStop] Stored wallet state as $json")*/
     }
+
     // Store user's wallet in Firestore
     private fun saveWallet() {
         val gson = Gson()
@@ -529,7 +511,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     mAuth.signOut()
                     Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this,LoginActivity::class.java))
-                    finish()
+                    //finish()
 
                 }
                 // Otherwise nothing happens
