@@ -39,11 +39,10 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
-import com.mapbox.geojson.FeatureCollection
-import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -52,7 +51,6 @@ import kotlin.collections.HashMap
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener,
         PermissionsListener,DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
 
-    private val tag = "MainActivity" // Logging purposes
     // Location variables
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
@@ -68,18 +66,30 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
 
-    // Shared preferences
+    // Shared preferences and map downloading
     private val preferencesFile = "MyPrefsFile" // For storing preferences
     private var downloadDate = "" // Format: YYYY/MM/DD
-    private var geoJsonString = "" // String with GeoJSON data
+    private var mapString = "" // String with map data
+    private lateinit var mapJson : JSONObject // JSON object of map
 
     // Firebase/Firestore variables
     private lateinit var mAuth: FirebaseAuth
     private lateinit var uid : String
     private lateinit var db : FirebaseFirestore
 
+    // Bank Account
+    private var bankBalance = 0
+    private var bankAccount : ArrayList<BankTransfer> = ArrayList()
+
+    // Exchange rates for currencies
+    private var penyRate = 0.0
+    private var dolrRate = 0.0
+    private var quidRate = 0.0
+    private var shilRate = 0.0
+
     // Constants
     companion object {
+        const val TAG = "MainActivity" // Logging purposes
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY = "Username"
         const val EMAIL_KEY = "Email"
@@ -126,9 +136,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val usernameText = "Welcome back $username!"
                 navUsernameText.text = usernameText
                 navEmailText.text = email
-                Log.d(tag,"[onCreate] Created welcome message")
+                Log.d(TAG,"[onCreate] Created welcome message")
             } else {
-                Log.d(tag,"[onCreate] User document not found")
+                Log.d(TAG,"[onCreate] User document not found")
             }
         }
         navigationView.setNavigationItemSelectedListener(this)
@@ -138,13 +148,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private fun getCurrentDate() : String {
         val sdf = SimpleDateFormat("yyyy/MM/dd",java.util.Locale.getDefault())
         val result = sdf.format(Date())
-        Log.d(tag, "[getCurrentDate]: current date is $result")
+        Log.d(TAG, "[getCurrentDate]: current date is $result")
         return result
     }
 
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
-            Log.d(tag, "[onMapReady] mapboxMap is null")
+            Log.d(TAG, "[onMapReady] mapboxMap is null")
         } else {
             map = mapboxMap
             // Set user interface options
@@ -160,71 +170,74 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             val currDate = getCurrentDate()
             if (currDate.equals(downloadDate)) {
                 // Only for testing purposes - reset progress
-                /*numDayCollectedCoins = 0
-                visitedMarkerIdList = mutableSetOf()
-                walletList = ArrayList()*/
+//                numDayCollectedCoins = 0
+//                visitedMarkerIdList = mutableSetOf()
+//                walletList = ArrayList()
+//                bankBalance = 0
+//                bankAccount = ArrayList()
 
                 // Already played today, render markers directly
-                Log.d(tag,"[onMapReady] Already played today, rendering markers directly")
-                renderJson(map,geoJsonString)
+                Log.d(TAG,"[onMapReady] Already played today, rendering markers directly")
+                renderJson(map,mapJson)
             } else {
                 // First time playing today
                 // Reset values and download coin map
-                Log.d(tag,"[onMapReady] First time playing today, reset values and download map from server")
+                Log.d(TAG,"[onMapReady] First time playing today, reset values and download map from server")
                 downloadDate = currDate
                 numDayCollectedCoins = 0
                 visitedMarkerIdList = mutableSetOf()
                 val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$downloadDate/coinzmap.geojson"
-                Log.d(tag,"[onMapReady] Downloading from $downloadUrl")
+                Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
                 val downloadFileTask = DownloadFileTask(this)
                 downloadFileTask.execute(downloadUrl)
             }
         }
     }
 
-    private fun renderJson(map:MapboxMap?, geoJsonString: String) {
+    private fun renderJson(map:MapboxMap?, geoJson: JSONObject) {
         if (map == null) {
-            Log.d(tag, "[renderJson] map is null")
-        } else {
-            val featureCollection = FeatureCollection.fromJson(geoJsonString)
-            val features = featureCollection.features()
-            val numFeatures = features!!.size
-            for (i in 0..numFeatures-1) {
-                val feature = features[i]
-                val featureGeom = feature.geometry()
-                if (featureGeom is Point) {
-                    val jsonObj = feature.properties()
-                    if (jsonObj == null) {
-                        Log.d(tag, "[renderJson] JSON object is null")
-                    } else {
-                        // Extract properties, show markers and populate marker list
-                        val currency = jsonObj.get("currency").toString().replace("\"","")
-                        val markerId = jsonObj.get("id").toString().replace("\"","")
-                        // Skip markers that have already been visited
-                        if (visitedMarkerIdList.contains(markerId)) {
-                            Log.d(tag,"[renderJson] Marker already visited, not rendering it")
-                            continue
-                        }
-                        val approxVal =jsonObj.get("value").asFloat
-                        val approxValFormat = String.format("%.3f",approxVal) // Round to 3 decimal digits for readability
-                        val coordinatesList = featureGeom.coordinates()
-                        val featureLatLng = LatLng(coordinatesList[1], coordinatesList[0])
-                        val colorCode = Color.parseColor(jsonObj.get("marker-color").toString().replace("\"",""))
-                        // Build custom marker icon - colour only
-                        val iconFactory = IconFactory.getInstance(this)
-                        val iconBitmap = getBitmapFromVectorDrawable(this, R.drawable.ic_place_24dp)
-                        val iconColorBitmap = tintImage(iconBitmap,colorCode)
-                        val icon = iconFactory.fromBitmap(iconColorBitmap)
-                        // Build marker
-                        val markerOpts = MarkerOptions().title(approxValFormat).snippet(currency).icon(icon).position(featureLatLng)
-                        Log.d(tag, "[renderJson] marker was added into the map and into markerList\n")
-                        val marker = map.addMarker(markerOpts)
-                        markerList.put(markerId,marker)
-                    }
-                }
-            }
-            Log.d(tag, "[renderJson] all markers added and markerList populated")
+            Log.d(TAG, "[renderJson] map is null")
         }
+        else {
+            val coins = geoJson.getJSONArray("features")
+            for (i in 0 until coins.length()) {
+                val coin = coins.getJSONObject(i)
+                val coinProps = coin.getJSONObject("properties")
+                val coinId = coinProps.getString("id")
+                if (visitedMarkerIdList.contains(coinId)) {
+                    Log.d(TAG,"[renderJson] Marker already visited today, not rendering it")
+                    continue
+                }
+                val coinCurrency = coinProps.getString("currency")
+                val coinValue = coinProps.getString("value").toDouble()
+                val coinCoords = coin.getJSONObject("geometry").getJSONArray("coordinates")
+                val coinLatLng = LatLng(coinCoords.get(1) as Double,coinCoords.get(0) as Double)
+                val coinColor = Color.parseColor(coinProps.getString("marker-color"))
+                // Build custom marker icon - colour only
+                val iconFactory = IconFactory.getInstance(this)
+                val iconBitmap = getBitmapFromVectorDrawable(this, R.drawable.ic_place_24dp)
+                val iconColorBitmap = tintImage(iconBitmap,coinColor)
+                val icon = iconFactory.fromBitmap(iconColorBitmap)
+                // Build marker
+                val markerOpts = MarkerOptions().title(String.format("%.3f",coinValue)).snippet(coinCurrency).icon(icon).position(coinLatLng)
+                Log.d(TAG, "[renderJson] marker was added into the map and into markerList\n")
+                val marker = map.addMarker(markerOpts)
+                markerList.put(coinId,marker)
+            }
+        }
+    }
+
+    // Update currency exchange rates when new map downloaded
+    private fun updateExchangeRates(geoJson: JSONObject) {
+        val rates = geoJson.getJSONObject("rates")
+        penyRate = rates.getDouble("PENY")
+        dolrRate = rates.getDouble("DOLR")
+        quidRate = rates.getDouble("QUID")
+        shilRate = rates.getDouble("SHIL")
+        Log.d(TAG,"[getExchangeRates] Updated rate for PENY is " + String.format("%.2f",penyRate))
+        Log.d(TAG,"[getExchangeRates] Updated rate for DOLR is " + String.format("%.2f",dolrRate))
+        Log.d(TAG,"[getExchangeRates] Updated rate for QUID is " + String.format("%.2f",quidRate))
+        Log.d(TAG,"[getExchangeRates] Updated rate for SHIL is " + String.format("%.2f",shilRate))
     }
 
     // Gets bitmap from a vector drawable
@@ -251,11 +264,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // Showing user location
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            Log.d(tag, "Permissions are granted")
+            Log.d(TAG, "Permissions are granted")
             initialiseLocationEngine()
             initialiseLocationLayer()
         } else {
-            Log.d(tag, "Permissions are not granted")
+            Log.d(TAG, "Permissions are not granted")
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
         }
@@ -283,10 +296,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     @SuppressWarnings("MissingPermission")
     private fun initialiseLocationLayer() {
         if (mapView == null) {
-            Log.d(tag, "mapView is null")
+            Log.d(TAG, "mapView is null")
         } else {
             if (map == null) {
-                Log.d(tag, "map is null")
+                Log.d(TAG, "map is null")
             } else {
                 locationLayerPlugin = LocationLayerPlugin(mapView!!,
                         map!!, locationEngine)
@@ -301,7 +314,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     private fun setCameraPosition(location: Location) {
         val latlng = LatLng(location.latitude, location.longitude)
-        Log.d(tag, "[setCameraPosition] Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
+        Log.d(TAG, "[setCameraPosition] Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
         map?.animateCamera(CameraUpdateFactory.newLatLng(latlng))
     }
 
@@ -309,7 +322,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // If user is sufficiently close to any coin (at least 25m), remove it from the map
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
-            Log.d(tag, "[onLocationChanged] location is null")
+            Log.d(TAG, "[onLocationChanged] location is null")
         // No need to check distances if wallet is false
         } else if (walletList.size == MAX_COINS_LIMIT) {
             return
@@ -325,12 +338,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val distToMarker = distanceToMarker(originLocation,marker)
                 // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
-                    Log.d(tag,"[onLocationChanged] Close to marker $markerId")
+                    Log.d(TAG,"[onLocationChanged] Close to marker $markerId")
                     mapIt.remove()
                     map!!.removeMarker(marker)
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected", Toast.LENGTH_SHORT).show()
                     visitedMarkerIdList.add(markerId)
-                    val coin = Coin(markerId,marker.snippet, marker.title.toDouble())
+                    val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false)
                     walletList.add(coin)
                     numDayCollectedCoins++
                 }
@@ -350,12 +363,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Opening information dialog when user collects all coins on the day
     private fun openCollectAllCoinsDialog() {
-        Log.d(tag, "[openCollectAllCOinsDialog] Opening information dialog for collecting all coins")
+        Log.d(TAG, "[openCollectAllCOinsDialog] Opening information dialog for collecting all coins")
         val allCoinsDialog = AlertDialog.Builder(this)
         allCoinsDialog.setTitle("Collected all coins!")
+        // To be done: Change daily bonus value appropriately
         allCoinsDialog.setMessage("Congratulations, you have successfully collected all coins today!" +
-         " You'll receive __ GOLD into your bank account as a reward."
+         " You'll receive 100 GOLD into your bank account as a reward."
                 + " Play again tomorrow to get another daily bonus.")
+        val dailyBonusTransfer = BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.0, bankBalance + 100.0)
+        bankBalance += 100
+        bankAccount.add(dailyBonusTransfer)
+        Log.d(TAG, "[openCollectAllCOinsDialog] Daily bonus added to bank account")
         // Clicking OK dismisses the dialog
         allCoinsDialog.setPositiveButton("OK") { _: DialogInterface?, _: Int -> }
         allCoinsDialog.show()
@@ -363,17 +381,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
-        Log.d(tag, "[onConnected] requesting location updates")
+        Log.d(TAG, "[onConnected] requesting location updates")
         locationEngine.requestLocationUpdates()
     }
 
     override fun onExplanationNeeded(permissionsToExplain:
                                      MutableList<String>?) {
-        Log.d(tag, "Permissions: $permissionsToExplain")
+        Log.d(TAG, "Permissions: $permissionsToExplain")
     }
 
     override fun onPermissionResult(granted: Boolean) {
-        Log.d(tag, "[onPermissionResult] granted == $granted")
+        Log.d(TAG, "[onPermissionResult] granted == $granted")
         if (granted) {
             enableLocation()
         } else {
@@ -386,16 +404,30 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapView?.onStart()
          // Restore preferences
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        // Get saved values
+        // Recall map variables
         downloadDate = settings.getString("lastDownloadDate", "")
-        geoJsonString = settings.getString("lastCoinMap","")
+        mapString = settings.getString("lastCoinMap","")
+        if (mapString.equals("")) {
+            mapJson = JSONObject()
+        }
+        else {
+            mapJson = JSONObject(mapString)
+        }
         numDayCollectedCoins = settings.getString("numDayCollectedCoins","0").toInt()
         visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
-        // Write a message to ”logcat” (for debugging purposes)
-        Log.d(tag, "[onStart] Recalled lastDownloadDate is $downloadDate")
-        Log.d(tag, "[onStart] Recalled lastCoinMap is $geoJsonString")
-        Log.d(tag, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
-        Log.d(tag, "[onStart] Recalled visited markers")
+        Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
+        Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
+        Log.d(TAG, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
+        Log.d(TAG, "[onStart] Recalled visited markers")
+        // Recall exchange rates
+        penyRate = settings.getString("penyRate","0.0").toDouble()
+        dolrRate = settings.getString("dolrRate","0.0").toDouble()
+        quidRate = settings.getString("quidRate","0.0").toDouble()
+        shilRate = settings.getString("shilRate","0.0").toDouble()
+        Log.d(TAG, "[onStop] Recalled PENY rate as $penyRate")
+        Log.d(TAG, "[onStop] Recalled DOLR rate as $dolrRate")
+        Log.d(TAG, "[onStop] Recalled QUID rate as $quidRate")
+        Log.d(TAG, "[onStop] Recalled SHIL rate as $shilRate")
         loadWallet() // Load wallet from Firestore
     }
 
@@ -412,18 +444,28 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStop() {
         super.onStop()
         mapView?.onStop()
-        // Store map values in Shared Preferences
+        mapString = mapJson.toString()
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         val editor = settings.edit()
+        // Store map values in Shared Preferences
         editor.putString("lastDownloadDate", downloadDate)
-        editor.putString("lastCoinMap",geoJsonString)
+        editor.putString("lastCoinMap",mapString)
         editor.putString("numDayCollectedCoins", numDayCollectedCoins.toString())
         editor.putStringSet("visitedMarkers", visitedMarkerIdList)
+        Log.d(TAG, "[onStop] Stored lastDownloadDate of $downloadDate")
+        Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
+        Log.d(TAG, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
+        Log.d(TAG, "[onStop] Stored visited markers")
+        // Store exchange rates in Shared Preferences
+        editor.putString("penyRate", penyRate.toString())
+        editor.putString("dolrRate", dolrRate.toString())
+        editor.putString("quidRate", quidRate.toString())
+        editor.putString("shilRate", shilRate.toString())
+        Log.d(TAG,"[onStop] stored rate of PENY as $penyRate")
+        Log.d(TAG, "[onStop] stored rate of DOLR as $dolrRate")
+        Log.d(TAG, "[onStop] stored rate of QUID as $quidRate")
+        Log.d(TAG, "[onStop] stored rate of SHIL as $shilRate")
         editor.apply()
-        Log.d(tag, "[onStop] Stored lastDownloadDate of $downloadDate")
-        Log.d(tag, "[onStop] Stored lastCoinMap as $geoJsonString")
-        Log.d(tag, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
-        Log.d(tag, "[onStop] Stored visited markers")
     }
 
     // Store user's wallet in Firestore
@@ -431,7 +473,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val gson = Gson()
         val json = gson.toJson(walletList)
         db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
-        Log.d(tag, "[onStop] Stored wallet state as $json")
+        Log.d(TAG, "[saveWallet] Stored wallet state as $json")
     }
 
     // Load wallet from Firestore
@@ -442,7 +484,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
                 val walletString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(tag,"[onStart] JSON representation of wallet: $walletString")
+                Log.d(TAG,"[loadWallet] JSON representation of wallet: $walletString")
                 if (walletString.equals("[]")) {
                     walletList = ArrayList()
                 } else {
@@ -451,7 +493,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 }
 
             } else {
-                Log.d(tag,"[onStart] Failed to extract JSON representation of wallet state")
+                Log.d(TAG,"[loadWallet] Failed to extract JSON representation of wallet state")
             }
         }
     }
@@ -473,12 +515,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
-    // Render markers when coin map is downloaded
-    override fun downloadComplete(result: String) {
-        geoJsonString = result
-        Log.d(tag, "[downloadComplete] successfully extracted the String with GeoJSON data $geoJsonString")
-        // Render markers after download was completed
-        renderJson(map, geoJsonString)
+    // Render markers and extract exchange rates after coin map is downloaded
+    override fun downloadComplete(result: JSONObject) {
+        mapJson = result
+        if (mapJson.length() != 0) {
+            Log.d(TAG, "[downloadComplete] successfully extracted map as JSON object")
+            // Render markers after download was completed
+            renderJson(map, mapJson)
+            updateExchangeRates(mapJson)
+        }
+        else {
+            Log.d(TAG, "[downloadComplete] couldn't extract map")
+        }
     }
 
     // Open Navigation drawer when menu item clicked
@@ -494,7 +542,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Handle navigation drawer click events
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-
+        mDrawerLayout.closeDrawers() // Close drawer
         when (item.itemId) {
             //Signs out current user upon confirmation and returns him to Log in screen
             R.id.sign_out -> {
@@ -507,11 +555,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     // If user confirms action
                     // Save wallet into FireStore and sign out
                     saveWallet()
-                    Log.d(tag,"[onNavigationItemSelected] Signing out user $uid")
+                    Log.d(TAG,"[onNavigationItemSelected] Signing out user $uid")
                     mAuth.signOut()
+//                    val resetIntent = Intent(this, LoginActivity::class.java)
+//                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+//                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                    startActivity(resetIntent)
                     Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this,LoginActivity::class.java))
-                    //finish()
+                    finish()
 
                 }
                 // Otherwise nothing happens
@@ -523,8 +575,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 saveWallet()
                 startActivity(Intent(this,WalletActivity::class.java))
             }
+            // Saves wallet and starts Bank account screen
+            R.id.bank_account -> {
+                saveWallet()
+                startActivity(Intent(this,BankActivity::class.java))
+            }
         }
         return true
     }
-
 }

@@ -1,5 +1,6 @@
 package com.example.minht.coinz
 
+import android.content.Context
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -11,19 +12,40 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.text.SimpleDateFormat
+import java.util.*
 
 class WalletActivity : AppCompatActivity() {
-
+    // Variables regarding coins in the wallet and screen components
     private var coinList : ArrayList<Coin> = ArrayList()
-    private var displayCoinList : ArrayList<String> = ArrayList()
-    private var selectedDisplayCoinsList : ArrayList<String> = ArrayList()
-    private lateinit var viewAdapter : ArrayAdapter<String>
+    private var selectedCoinList : ArrayList<Coin> = ArrayList()
+    private lateinit var walletAdapter : WalletAdapter
+    private lateinit var walletStateTextView : TextView
     private lateinit var coinListView : ListView
-    private lateinit var sendButton: Button
+    private lateinit var transferButton: Button
+    private lateinit var depositButton: Button
 
+    // Counts per currency selected
+    private var numPenySelected = 0
+    private var numDolrSelected = 0
+    private var numQuidSelected = 0
+    private var numShilSelected = 0
+
+    // Banking variables
+    // How many coins selected per day and exchange rates for all currencies
+    //private var bankTransferList : ArrayList<BankTransfer> = ArrayList()
+    private var bankBalance = 0.0
+    private var numberCoinsBanked = 0
+    private var penyRate : Double = 0.0
+    private var dolrRate : Double = 0.0
+    private var quidRate : Double = 0.0
+    private var shilRate : Double = 0.0
+
+    // Other general variables
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db : FirebaseFirestore
     private lateinit var gson : Gson
+    private val preferencesFile = "MyPrefsFile" // For storing preferences
 
     companion object {
         const val TAG = "WalletActivity" // For logging purposes
@@ -39,97 +61,151 @@ class WalletActivity : AppCompatActivity() {
         mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         gson = Gson()
-        sendButton = findViewById(R.id.send_coins_button)
-        sendButton.setOnClickListener { _ ->
+        coinListView = findViewById(R.id.coins_checkable_list)
+        transferButton = findViewById(R.id.transfer_coins_button)
+        transferButton.setOnClickListener { _ ->
+            getSelectedCoins()
             // Check if any coins were selected before proceeding to the next screen
-            if (selectedDisplayCoinsList.size != 0) {
-                // Pass JSON representation of selected coins to next activity
-                val selectedCoinListJSON = makeSelectedCoinList(selectedDisplayCoinsList)
+            if (selectedCoinList.size != 0) {
+                val selectedCoinListJSON = gson.toJson(selectedCoinList)
                 val selectRecipientIntent = Intent(this,SelectRecipientActivity::class.java)
                 selectRecipientIntent.putExtra(SELECTED_COINS_KEY,selectedCoinListJSON)
+                Log.d(TAG, "[onCreate] Some coins selected and existing user identified, proceeding to next screen")
                 startActivity(selectRecipientIntent)
+                walletAdapter = WalletAdapter(this, coinList)
+                coinListView.adapter = walletAdapter
+                cleanUp()
             } else {
-                Toast.makeText(this, "Select some coins for transfer!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
+                Log.d(TAG,"[onCreate] No coins selected for transfer")
             }
         }
-
-    }
-
-    // Prepare list for displaying coins
-    private fun makeDisplayCoinList() {
-        for (coin in coinList) {
-            displayCoinList.add(coin.toString())
-        }
-    }
-
-    // Displays state of the wallet as a checkbox list of coins
-    private fun displayCoins() {
-        val walletStateTextView = findViewById<TextView>(R.id.wallet_state)
-        val numCoins = coinList.size
-        if (numCoins == 0) {
-            Log.d(TAG, "[displayCoins] No coins to display")
-            val walletStateText = "Coins in the wallet: 0 / 1000 \n Collect coins on the map" +
-            " or check for any unopened gifts!"
-            walletStateTextView.text = walletStateText
-        } else {
-            val walletStateText = "Coins in the wallet: $numCoins / 1000"
-            walletStateTextView.text = walletStateText
-            coinListView = findViewById(R.id.coins_checkable_list)
-            coinListView.choiceMode = ListView.CHOICE_MODE_MULTIPLE
-            viewAdapter = ArrayAdapter(this,R.layout.row_layout,R.id.text_checkbox,displayCoinList)
-            coinListView.adapter = viewAdapter
-            // Listen for which items are selected
-            coinListView.setOnItemClickListener { _, view, _, _ ->
-                val selectedItemTextView = view as TextView
-                val selectedItem = selectedItemTextView.text.toString()
-                if (selectedDisplayCoinsList.contains(selectedItem)) {
-                    selectedDisplayCoinsList.remove(selectedItem) // Unchecking item
-                } else {
-                    selectedDisplayCoinsList.add(selectedItem)
+        depositButton = findViewById(R.id.deposit_coins_button)
+        depositButton.setOnClickListener{ _ ->
+            // Check daily banking limit
+            if (numberCoinsBanked < 25) {
+                getSelectedCoins()
+                // Check if any coins were selected
+                if (selectedCoinList.size != 0) {
+                    val bankTransfer = makeBankTransfer()
+                    Log.d(TAG, "[onCreate] Deposit made\n" + bankTransfer.toString())
+                    // Reset screen
+                    coinList.removeAll(selectedCoinList)
+                    walletAdapter = WalletAdapter(this, coinList)
+                    coinListView.adapter = walletAdapter
+                    cleanUp()
+                }
+                else {
+                    Toast.makeText(this, "Select some coins to deposit!", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[onCreate] No coins selected for deposit")
                 }
             }
-            Log.d(TAG, "[displayCoins] Coins to displayed")
+            else {
+                Toast.makeText(this,"Already banked 25 coins today, try again tomorrow!", Toast.LENGTH_SHORT).show()
+                Log.d(TAG,"[onCreate] Reached banking limit")
+            }
+
+        }
+        walletStateTextView = findViewById(R.id.wallet_state)
+    }
+
+    // Extract which coins were selected
+    // Also make counts per currency
+    private fun getSelectedCoins() {
+        for (coin in coinList) {
+            if (coin.selected) {
+                selectedCoinList.add(coin)
+                coin.selected = false // Reset selected value for possible recipient
+            }
         }
     }
 
-    // Make JSON representation of selected coins from their string representation
-    private fun makeSelectedCoinList(coinStrings : ArrayList<String>) : String {
-        val selectedCoinList : ArrayList<Coin> = ArrayList()
-        for (coinString in coinStrings) {
-            val currency = coinString.substring(0,4)
-            val value = coinString.substring(coinString.indexOf(":")+2,coinString.indexOf(":")+7).toDouble()
-            val id = coinString.substring(coinString.indexOf("Id:")+4)
-            val selectedCoin = Coin(id,currency,value)
-            selectedCoinList.add(selectedCoin)
+    // Make bank deposit from selected coins
+    private fun makeBankTransfer() : BankTransfer {
+        var amount = 0.0
+        for (coin in selectedCoinList) {
+            val currency = coin.currency
+            val value = coin.valueInGold
+            when(currency) {
+                "PENY" -> {
+                    numPenySelected++
+                    amount += penyRate*value
+                }
+                "DOLR" -> {
+                    numDolrSelected++
+                    amount += dolrRate*value
+                }
+                "QUID" -> {
+                    numQuidSelected++
+                    amount += quidRate*value
+                }
+                "SHIL" -> {
+                    numShilSelected++
+                    amount += shilRate*value
+                }
+                else -> Log.d(TAG, "[makeSelectedCoinList] Invalid currency encountered")
+            }
         }
-        return gson.toJson(selectedCoinList)
+        val depositDesc = "Deposite $numPenySelected PENY, $numDolrSelected DOLR, $numQuidSelected QUID and $numShilSelected SHIL"
+        bankBalance += amount
+        return BankTransfer(getCurrentDate(),depositDesc,amount,bankBalance)
+    }
+
+    // Clean up resources
+    private fun cleanUp() {
+        selectedCoinList.clear()
+        numPenySelected = 0
+        numDolrSelected = 0
+        numQuidSelected = 0
+        numShilSelected = 0
+    }
+
+    // Returns today's date in format: YYYY/MM/DD
+    private fun getCurrentDate() : String {
+        val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+        val result = sdf.format(Date())
+        Log.d(TAG, "[getCurrentDate]: current date is $result")
+        return result
     }
 
     override fun onStart() {
         super.onStart()
-        Log.d(TAG,"[onStart] Recalling list of coins in the wallet")
+        Log.d(TAG, "[onStart] Recalling list of coins in the wallet")
         // Find JSON representation of user's wallet in FireStore
         val userDocRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
-        userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
+        userDocRef.get().addOnCompleteListener { task: Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
                 val walletString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(TAG,"[onStart] JSON representation of wallet $walletString")
+                Log.d(TAG, "[onStart] JSON representation of wallet $walletString")
                 if (walletString.equals("[]")) {
-                    Log.d(TAG,"[onStart] No coins collected yet")
+                    Log.d(TAG, "[onStart] No coins collected yet")
                     coinList = ArrayList()
+                    val walletStateText = "Coins in the wallet: 0 / 1000 \n Collect coins on the" +
+                            " map" + " or check for any unopened gifts!"
+                    walletStateTextView.text = walletStateText
 
                 } else {
-                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
+                    val type = object : TypeToken<ArrayList<Coin>>() {}.type
                     coinList = gson.fromJson(walletString, type)
-                    Log.d(TAG,"[onStart] Restored coins")
-                    makeDisplayCoinList()
-                    Log.d(TAG,"[onStart] Displaying list of coins in the wallet")
+                    val walletStateText = "Coins in the wallet: ${coinList.size} / 1000"
+                    walletStateTextView.text = walletStateText
+                    Log.d(TAG, "[onStart] Restored coins")
+                    Log.d(TAG, "[onStart] Displaying list of coins in the wallet")
+                    walletAdapter = WalletAdapter(this, coinList)
+                    coinListView.adapter = walletAdapter
                 }
-                displayCoins()
-            } else {
-                Log.d(TAG,"[onStart] Failed to extract JSON representation of wallet state")
             }
         }
+        // Load exchange rates
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        penyRate = settings.getString("penyRate","0.0").toDouble()
+        dolrRate = settings.getString("dolrRate","0.0").toDouble()
+        quidRate = settings.getString("quidRate","0.0").toDouble()
+        shilRate = settings.getString("shilRate","0.0").toDouble()
+        Log.d(TAG, "[onStop] Recalled PENY rate as $penyRate")
+        Log.d(TAG, "[onStop] Recalled DOLR rate as $dolrRate")
+        Log.d(TAG, "[onStop] Recalled QUID rate as $quidRate")
+        Log.d(TAG, "[onStop] Recalled SHIL rate as $shilRate")
     }
 
     override fun onStop() {

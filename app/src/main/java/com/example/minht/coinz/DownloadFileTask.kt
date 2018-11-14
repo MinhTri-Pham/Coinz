@@ -1,6 +1,7 @@
 package com.example.minht.coinz
 
 import android.os.AsyncTask
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
@@ -8,15 +9,15 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTask<String,Void,String>(){
+class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTask<String,Void,JSONObject>(){
 
-    override fun doInBackground(vararg urls: String): String = try {
+    override fun doInBackground(vararg urls: String): JSONObject = try {
         loadFileFromNetwork(urls[0])
     } catch (e:IOException) {
-        "Unable to load content. Check your network connection"
+        JSONObject()
     }
 
-    private fun loadFileFromNetwork(urlString: String) : String {
+    private fun loadFileFromNetwork(urlString: String) : JSONObject {
         val stream : InputStream = downloadUrl(urlString)
         val result = StringBuilder()
         // Create a reader and read line by line
@@ -26,7 +27,8 @@ class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTa
             result.append(line)
             line = reader.readLine()
         }
-        return result.toString()
+        //return result.toString()
+        return JSONObject(result.toString())
     }
 
     // Given a string representation of a URL, sets up a connection and gets an input stream.
@@ -42,7 +44,7 @@ class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTa
         return conn.inputStream
     }
 
-    override fun onPostExecute(result: String) {
+    override fun onPostExecute(result: JSONObject) {
         super.onPostExecute(result)
         caller.downloadComplete(result)
     }

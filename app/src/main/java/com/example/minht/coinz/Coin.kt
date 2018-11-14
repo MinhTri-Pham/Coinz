@@ -1,6 +1,6 @@
 package com.example.minht.coinz
 
- class Coin (val id: String, val currency: String, val valueInGold : Double) {
+ class Coin (val id: String, val currency: String, val valueInGold: Double, var selected: Boolean) {
 
      override fun hashCode(): Int {
          var result = 17
@@ -18,6 +18,5 @@ package com.example.minht.coinz
          }
      }
 
-     override fun toString() : String =  "$currency, Value: $valueInGold\nId: $id"
-
+     override fun toString() : String =  "$currency, Value: $valueInGold"
 }

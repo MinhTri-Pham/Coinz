@@ -1,12 +1,7 @@
 package com.example.minht.coinz
 
-interface DownloadCompleteListener {
-    fun downloadComplete(result: String)
+import org.json.JSONObject
 
-    object DownloadCompleteRunner : DownloadCompleteListener {
-        var result : String? = null
-        override fun downloadComplete(result: String) {
-            this.result = result
-        }
-    }
+interface DownloadCompleteListener {
+    fun downloadComplete(result: JSONObject)
 }
