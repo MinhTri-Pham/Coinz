@@ -20,11 +20,6 @@ import com.google.gson.Gson
 
 class RegisterActivity : AppCompatActivity() {
 
-    private val tag = "RegisterActivity" // Logging purposes
-    private val COLLECTION_KEY = "Users"
-    private val USERNAME_KEY = "Username" // Holds username of user
-    private val EMAIL_KEY = "Email" // Holds email of user
-    private val WALLET_KEY = "Wallet" // Holds JSON representation of collected coins by user
     private lateinit var mAuth : FirebaseAuth
     private lateinit var db : FirebaseFirestore
     private lateinit var registerButton : Button
@@ -32,6 +27,16 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var usernameText : EditText
     private lateinit var emailText : EditText
     private lateinit var passwordText : EditText
+
+    companion object {
+        const val tag = "RegisterActivity" // Logging purposes
+        // For holding data in Firestore
+        const val COLLECTION_KEY = "Users"
+        const val USERNAME_KEY = "Username"
+        const val EMAIL_KEY = "Email"
+        const val WALLET_KEY = "Wallet"
+        const val BANK_KEY = "Bank"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,15 +76,19 @@ class RegisterActivity : AppCompatActivity() {
                     val user : HashMap<String, Any> = HashMap();
                     user.put(USERNAME_KEY, username)
                     user.put(EMAIL_KEY,email)
+                    // Create empty wallet and bank account for user
                     val emptyWallet = ArrayList<Coin>()
+                    val emptyBankTransfers = ArrayList<BankTransfer>()
+                    val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
                     val gson = Gson();
-                    user.put(WALLET_KEY, gson.toJson(emptyWallet)) // Initially empty wallet
-                    db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{
-                        _: Void? -> Log.d(tag,"[registerUser] Successfully updated database")
+                    user.put(WALLET_KEY, gson.toJson(emptyWallet))
+                    user.put(BANK_KEY, gson.toJson(emptyBankAccount))
+                    db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
+                        Log.d(tag,"[registerUser] Created new iser")
+                        Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
                     }.addOnFailureListener {
-                        _: java.lang.Exception -> Log.d(tag,"[registerUser] Failed to update database")
+                        _: java.lang.Exception -> Log.d(tag,"[registerUser] Failed to create a new user")
                     }
-                    Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Log.d(tag,"[registerUser] Registration failed due to bad credentials")
                     Toast.makeText(this, "Couldn't register, try different credentials", Toast.LENGTH_SHORT).show()
@@ -96,5 +105,4 @@ class RegisterActivity : AppCompatActivity() {
     private fun switchToLogin() {
         startActivity(Intent(this,LoginActivity::class.java))
     }
-
 }

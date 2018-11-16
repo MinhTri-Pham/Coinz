@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
+    private var receivedDailyBonus = false // Whether player received daily bonus already
 
     // Shared preferences and map downloading
     private val preferencesFile = "MyPrefsFile" // For storing preferences
@@ -78,8 +79,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var db : FirebaseFirestore
 
     // Bank Account
-    private var bankBalance = 0
-    private var bankAccount : ArrayList<BankTransfer> = ArrayList()
+    //private lateinit var bankAccount : BankAccount
+    private var bankAccount : BankAccount? = null
 
     // Exchange rates for currencies
     private var penyRate = 0.0
@@ -90,12 +91,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // Constants
     companion object {
         const val TAG = "MainActivity" // Logging purposes
+        // Keys to access values in Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY = "Username"
         const val EMAIL_KEY = "Email"
         const val WALLET_KEY = "Wallet"
+        const val BANK_ACCOUNT_KEY = "Bank"
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
+        const val MAX_DAILY_COINS = 4; // Maximum number of coins that can be collected on per day
         const val MAX_COINS_LIMIT = 1000;
     }
 
@@ -234,10 +237,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         dolrRate = rates.getDouble("DOLR")
         quidRate = rates.getDouble("QUID")
         shilRate = rates.getDouble("SHIL")
-        Log.d(TAG,"[getExchangeRates] Updated rate for PENY is " + String.format("%.2f",penyRate))
-        Log.d(TAG,"[getExchangeRates] Updated rate for DOLR is " + String.format("%.2f",dolrRate))
-        Log.d(TAG,"[getExchangeRates] Updated rate for QUID is " + String.format("%.2f",quidRate))
-        Log.d(TAG,"[getExchangeRates] Updated rate for SHIL is " + String.format("%.2f",shilRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for PENY is " + String.format("%.2f",penyRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.2f",dolrRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.2f",quidRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.2f",shilRate))
     }
 
     // Gets bitmap from a vector drawable
@@ -336,7 +339,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val markerId = pair.key
                 val marker = pair.value
                 val distToMarker = distanceToMarker(originLocation,marker)
-                // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
+                    // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
                     Log.d(TAG,"[onLocationChanged] Close to marker $markerId")
                     mapIt.remove()
@@ -347,8 +350,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     walletList.add(coin)
                     numDayCollectedCoins++
                 }
-                if (numDayCollectedCoins == MAX_DAILY_COINS) {
-                    openCollectAllCoinsDialog()
+                if (numDayCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
+                    //openCollectAllCoinsDialog()
+                    bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100))
+                    bankAccount!!.balance += 100.00
+                    Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
+                    receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
                 }
             }
         }
@@ -362,22 +369,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     }
 
     // Opening information dialog when user collects all coins on the day
-    private fun openCollectAllCoinsDialog() {
-        Log.d(TAG, "[openCollectAllCOinsDialog] Opening information dialog for collecting all coins")
-        val allCoinsDialog = AlertDialog.Builder(this)
-        allCoinsDialog.setTitle("Collected all coins!")
-        // To be done: Change daily bonus value appropriately
-        allCoinsDialog.setMessage("Congratulations, you have successfully collected all coins today!" +
-         " You'll receive 100 GOLD into your bank account as a reward."
-                + " Play again tomorrow to get another daily bonus.")
-        val dailyBonusTransfer = BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.0, bankBalance + 100.0)
-        bankBalance += 100
-        bankAccount.add(dailyBonusTransfer)
-        Log.d(TAG, "[openCollectAllCOinsDialog] Daily bonus added to bank account")
-        // Clicking OK dismisses the dialog
-        allCoinsDialog.setPositiveButton("OK") { _: DialogInterface?, _: Int -> }
-        allCoinsDialog.show()
-    }
+    // Add daily bonus (to be implemented) to bank account of user
+//    private fun openCollectAllCoinsDialog() {
+//        Log.d(TAG, "[openCollectAllCOinsDialog] Opening information dialog for collecting all coins")
+//        val allCoinsDialog = AlertDialog.Builder(this)
+//        allCoinsDialog.setTitle("Collected all coins!")
+//        // To be done: Change daily bonus value appropriately
+//        allCoinsDialog.setMessage("Congratulations, you have successfully collected all coins today!" +
+//         " You'll receive 100 GOLD into your bank account as a reward."
+//                + " Play again tomorrow to get another daily bonus.")
+//        // Clicking OK adds daily bonus and closes the dialog
+//        allCoinsDialog.setCancelable(false)
+//        allCoinsDialog.setPositiveButton("OK") { _: DialogInterface?, _: Int ->
+//            bankAccount.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount.balance+100))
+//        }
+//        allCoinsDialog.show()
+//    }
 
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
@@ -424,11 +431,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         dolrRate = settings.getString("dolrRate","0.0").toDouble()
         quidRate = settings.getString("quidRate","0.0").toDouble()
         shilRate = settings.getString("shilRate","0.0").toDouble()
-        Log.d(TAG, "[onStop] Recalled PENY rate as $penyRate")
-        Log.d(TAG, "[onStop] Recalled DOLR rate as $dolrRate")
-        Log.d(TAG, "[onStop] Recalled QUID rate as $quidRate")
-        Log.d(TAG, "[onStop] Recalled SHIL rate as $shilRate")
-        loadWallet() // Load wallet from Firestore
+        Log.d(TAG, "[onStart] Recalled PENY rate as $penyRate")
+        Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
+        Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
+        Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
+        loadData() // Load data from Firestore
     }
 
     public override fun onResume() {
@@ -461,39 +468,47 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString("dolrRate", dolrRate.toString())
         editor.putString("quidRate", quidRate.toString())
         editor.putString("shilRate", shilRate.toString())
-        Log.d(TAG,"[onStop] stored rate of PENY as $penyRate")
-        Log.d(TAG, "[onStop] stored rate of DOLR as $dolrRate")
-        Log.d(TAG, "[onStop] stored rate of QUID as $quidRate")
-        Log.d(TAG, "[onStop] stored rate of SHIL as $shilRate")
+        Log.d(TAG,"[onStop] Stored rate of PENY as $penyRate")
+        Log.d(TAG, "[onStop] Stored rate of DOLR as $dolrRate")
+        Log.d(TAG, "[onStop] Stored rate of QUID as $quidRate")
+        Log.d(TAG, "[onStop] Stored rate of SHIL as $shilRate")
         editor.apply()
     }
 
-    // Store user's wallet in Firestore
-    private fun saveWallet() {
+    // Store user data in Firestore
+    private fun saveData() {
+        // Save wallet
         val gson = Gson()
-        val json = gson.toJson(walletList)
+        var json = gson.toJson(walletList)
         db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
-        Log.d(TAG, "[saveWallet] Stored wallet state as $json")
+        Log.d(TAG, "[saveData] Stored wallet as $json")
+        json = gson.toJson(bankAccount)
+        db.collection(COLLECTION_KEY).document(uid).update(BANK_ACCOUNT_KEY,json)
+        Log.d(TAG, "[saveData] Stored bank account as $json")
     }
 
-    // Load wallet from Firestore
-    private fun loadWallet() {
+    // Load user data from Firestore
+    private fun loadData() {
         val gson = Gson()
-        // Find JSON respresentation of user's wallet in FireStore
         val userDocRef = db.collection(COLLECTION_KEY).document(uid)
         userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
-                val walletString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(TAG,"[loadWallet] JSON representation of wallet: $walletString")
-                if (walletString.equals("[]")) {
+                // Load wallet
+                var dataString = task.result!!.get(WALLET_KEY).toString()
+                Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
+                if (dataString.equals("[]")) {
                     walletList = ArrayList()
                 } else {
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
-                    walletList = gson.fromJson(walletString, type)
+                    walletList = gson.fromJson(dataString, type)
                 }
-
+                // Load bank account
+                dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
+                Log.d(TAG,"[loadData] Loaded bank account as: $dataString")
+                bankAccount = gson.fromJson(dataString, BankAccount::class.java)
             } else {
-                Log.d(TAG,"[loadWallet] Failed to extract JSON representation of wallet state")
+                Log.d(TAG,"[loadData] Failed to load data")
+                Toast.makeText(this, "Failed to load your data, check your internet connection!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -554,7 +569,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setPositiveButton("Yes") { _: DialogInterface?, _: Int ->
                     // If user confirms action
                     // Save wallet into FireStore and sign out
-                    saveWallet()
+                    saveData()
                     Log.d(TAG,"[onNavigationItemSelected] Signing out user $uid")
                     mAuth.signOut()
 //                    val resetIntent = Intent(this, LoginActivity::class.java)
@@ -564,7 +579,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this,LoginActivity::class.java))
                     finish()
-
                 }
                 // Otherwise nothing happens
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
@@ -572,12 +586,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             // Saves wallet and starts Wallet screen
             R.id.wallet -> {
-                saveWallet()
+                saveData()
                 startActivity(Intent(this,WalletActivity::class.java))
             }
             // Saves wallet and starts Bank account screen
             R.id.bank_account -> {
-                saveWallet()
+                saveData()
                 startActivity(Intent(this,BankActivity::class.java))
             }
         }
