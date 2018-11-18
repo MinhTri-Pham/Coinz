@@ -1,20 +1,24 @@
 package com.example.minht.coinz
 
 import android.content.Context
-import android.content.Intent
+import android.content.DialogInterface
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AlertDialog
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 
 class WalletActivity : AppCompatActivity() {
     // Screen components
@@ -30,6 +34,7 @@ class WalletActivity : AppCompatActivity() {
     // Which coins were selected for further action
     private var selectedCoinList : ArrayList<Coin> = ArrayList()
 
+    //private var closeDialog = false
     // Banking variables
     // How many coins selected per day and exchange rates for all currencies
     private lateinit var bankAccount : BankAccount
@@ -47,9 +52,10 @@ class WalletActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "WalletActivity" // For logging purposes
-        const val SELECTED_COINS_KEY="Selected coins" // For next screen when sending coins to other players
+        //const val SELECTED_COINS_KEY="Selected coins" // For next screen when sending coins to other players
         // For accessing data in Firestore
         const val COLLECTION_KEY = "Users"
+        const val USERNAME_KEY = "Username"
         const val WALLET_KEY = "Wallet"
         const val BANK_ACCOUNT_KEY = "Bank"
     }
@@ -67,17 +73,54 @@ class WalletActivity : AppCompatActivity() {
         // Send selected coins to someone
         transferButton.setOnClickListener { _ ->
             getSelectedCoins()
-            // Check if any coins were selected before proceeding to the next screen
+            // Ver.1 (commented out): Check if any coins were selected before proceeding to the next screen
+            // Ver.2 : If some coins collected, open a prompt input dialog to type username of recipient directly
             if (selectedCoinList.size != 0) {
-                val selectedCoinListJSON = gson.toJson(selectedCoinList)
-                val selectRecipientIntent = Intent(this,SelectRecipientActivity::class.java)
-                selectRecipientIntent.putExtra(SELECTED_COINS_KEY,selectedCoinListJSON)
-                Log.d(TAG, "[onCreate] Some coins selected and existing user identified, proceeding to next screen")
-                startActivity(selectRecipientIntent)
-                walletAdapter = WalletAdapter(this, coinList)
-                coinListView.adapter = walletAdapter
-                selectedCoinList.clear()
-            } else {
+//                VERSION 1
+//                val selectedCoinListJSON = gson.toJson(selectedCoinList)
+//                val selectRecipientIntent = Intent(this,SelectRecipientActivity::class.java)
+//                selectRecipientIntent.putExtra(SELECTED_COINS_KEY,selectedCoinListJSON)
+//                Log.d(TAG, "[onCreate] Some coins selected and existing user identified, proceeding to next screen")
+//                startActivity(selectRecipientIntent)
+//                walletAdapter = WalletAdapter(this, coinList)
+//                coinListView.adapter = walletAdapter
+//                selectedCoinList.clear()
+                // VERSION 2
+                val layoutInflater = LayoutInflater.from(this)
+                val promptView = layoutInflater.inflate(R.layout.username_prompt,null)
+                val usernamePrompt = AlertDialog.Builder(this)
+                val usernameInput = promptView.findViewById(R.id.recipient_username_editText) as EditText
+                usernamePrompt.setView(promptView)
+                usernamePrompt.setTitle("Choose transfer recipient").setCancelable(false)
+                usernamePrompt.setPositiveButton("Confirm transfer") { _:DialogInterface, _:Int ->}
+                usernamePrompt.setNegativeButton("Cancel transfer") { _:DialogInterface, _:Int ->}
+                val userDialog = usernamePrompt.create()
+                userDialog.show()
+                userDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { _:View ->
+                    makeTransfer(usernameInput.text.toString(), userDialog)
+//                    if (closeDialog) {
+//                        userDialog.dismiss()
+//                        closeDialog = false
+//                    }
+                }
+                userDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { _:View ->
+                    Log.d(TAG,"[onCreate] Transfer cancelled")
+                    deselectAll()
+                    userDialog.dismiss()
+
+                }
+//                usernamePrompt.setPositiveButton("Confirm transfer") { dialog: DialogInterface?, _: Int ->
+//                    makeTransfer(usernameInput.text.toString())
+//                }
+//                // Pressing "Cancel transfer" closes the alert dialog, no changes to wallet
+//                usernamePrompt.setNegativeButton("Cancel transfer") { _: DialogInterface?, _: Int ->
+//                    Log.d(TAG,"[onCreate] Transfer cancelled")
+//                    deselectAll()
+//                }
+//                usernamePrompt.show()
+
+            }
+            else {
                 Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
                 Log.d(TAG,"[onCreate] No coins selected for transfer")
             }
@@ -94,11 +137,8 @@ class WalletActivity : AppCompatActivity() {
                     coinList.removeAll(selectedCoinList)
                     // Save new data for user
                     saveData()
-                    // Update top summary, remove deposited coins from screen
-                    generateSummary()
-                    walletAdapter = WalletAdapter(this, coinList)
-                    coinListView.adapter = walletAdapter
-                    selectedCoinList.clear()
+                    // Update screen
+                    updateScreen()
                 }
                 else {
                     Toast.makeText(this, "Select some coins to deposit!", Toast.LENGTH_SHORT).show()
@@ -113,23 +153,11 @@ class WalletActivity : AppCompatActivity() {
         // Check all coins
         selectButton = findViewById(R.id.select_all_button)
         selectButton.setOnClickListener {_ : View ->
-            for (coin in coinList) {
-                coin.selected = true
-                selectedCoinList.clear()
-                selectedCoinList.addAll(coinList)
-                walletAdapter = WalletAdapter(this, coinList)
-                coinListView.adapter = walletAdapter
-            }
+            selectAll()
         }
-        // Uncheck all coins
         deselectButton = findViewById(R.id.deselect_all_button)
         deselectButton.setOnClickListener { _:View ->
-            for (coin in coinList) {
-                coin.selected = false
-                selectedCoinList.clear()
-                walletAdapter = WalletAdapter(this, coinList)
-                coinListView.adapter = walletAdapter
-            }
+            deselectAll()
         }
     }
 
@@ -143,7 +171,69 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-    // Make bank deposit from selected coins
+    // Select all coins
+    private fun selectAll() {
+        for (coin in coinList) {
+            coin.selected = true
+            selectedCoinList.clear()
+            selectedCoinList.addAll(coinList)
+            walletAdapter = WalletAdapter(this, coinList)
+            coinListView.adapter = walletAdapter
+        }
+    }
+
+    // Deselect all coins
+    private fun deselectAll() {
+        for (coin in coinList) {
+            coin.selected = false
+            selectedCoinList.clear()
+            walletAdapter = WalletAdapter(this, coinList)
+            coinListView.adapter = walletAdapter
+        }
+    }
+
+
+    // Transfer selected coins to given user, return if it was successful
+    private fun makeTransfer(recipientUsername: String, dialog: AlertDialog) {
+        //var closeDialog = false
+        if (!recipientUsername.isEmpty()) {
+            val usersRef = db.collection(COLLECTION_KEY)
+            val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
+            findUsernameQuery.get().addOnCompleteListener{task: Task<QuerySnapshot> ->
+                if (task.isSuccessful) {
+                    val recipientId = task.result!!.documents[0].id
+                    var recipientWalletString = task.result!!.documents[0].get(WALLET_KEY).toString()
+                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
+                    val recipientWallet : ArrayList<Coin> = gson.fromJson(recipientWalletString,type)
+                    recipientWallet.addAll(selectedCoinList)
+                    recipientWalletString = gson.toJson(recipientWallet)
+                    db.collection(COLLECTION_KEY).document(recipientId).update(WALLET_KEY,recipientWalletString)
+                    Log.d(TAG, "[makeTransfer] Updated wallet of recipient as $recipientWalletString")
+                    coinList.removeAll(selectedCoinList)
+                    val userWalletString = gson.toJson(coinList)
+                    db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
+                    Log.d(TAG, "[makeTransfer] Updated wallet of user as $userWalletString")
+                    Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss() // Close prompt dialog
+                    updateScreen() // Update contents of wallet
+                }
+                else {
+                    Log.d(TAG,"[makeTransfer] User not found")
+                    Toast.makeText(this, "Such user doesn't exist, try a different username", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        else {
+            Log.d(TAG,"[makeTransfer] Can't query since input was empty")
+            Toast.makeText(this, "Choose a player to send coins to", Toast.LENGTH_SHORT).show()
+        }
+
+//        if (closeDialog) {
+//            dialog.dismiss()
+//        }
+    }
+
+    // Deposit selected coins to bank account
     private fun makeDeposit() {
         var amount = 0.0
         // Counts per currency selected
@@ -182,6 +272,13 @@ class WalletActivity : AppCompatActivity() {
         bankAccount.balance = newBalance
         bankAccount.bankTransfers.add(bankTransfer)
         Log.d(TAG, "[makeDeposit] Deposit made\n" + bankTransfer.toString())
+    }
+
+    private fun updateScreen() {
+        generateSummary()
+        walletAdapter = WalletAdapter(this, coinList)
+        coinListView.adapter = walletAdapter
+        selectedCoinList.clear()
     }
 
     // Returns today's date in format: YYYY/MM/DD

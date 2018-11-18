@@ -57,7 +57,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var mDrawerLayout : DrawerLayout
     private lateinit var originLocation: Location
     private lateinit var permissionsManager: PermissionsManager
-    private lateinit var locationEngine: LocationEngine
+    // private lateinit var locationEngine: LocationEngine
+    private var locationEngine : LocationEngine? = null
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Coin collection mechanism variables
@@ -99,7 +100,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val BANK_ACCOUNT_KEY = "Bank"
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
         const val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
-        const val MAX_COINS_LIMIT = 1000;
+        const val MAX_COINS_LIMIT = 15; // Maximum number of coins that can be in the wallet at any time
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -215,17 +216,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val coinValue = coinProps.getString("value").toDouble()
                 val coinCoords = coin.getJSONObject("geometry").getJSONArray("coordinates")
                 val coinLatLng = LatLng(coinCoords.get(1) as Double,coinCoords.get(0) as Double)
-                val coinColor = Color.parseColor(coinProps.getString("marker-color"))
                 // Build custom marker icon - colour only
-                val iconFactory = IconFactory.getInstance(this)
-                val iconBitmap = getBitmapFromVectorDrawable(this, R.drawable.ic_place_24dp)
-                val iconColorBitmap = tintImage(iconBitmap,coinColor)
-                val icon = iconFactory.fromBitmap(iconColorBitmap)
+                // Disabled for now, see below comment
+                // BUG: Disappear randomly when map changes (zoom in/out, removing one)
+//                val coinColor = Color.parseColor(coinProps.getString("marker-color"))
+//                val iconFactory = IconFactory.getInstance(this)
+//                val iconBitmap = getBitmapFromVectorDrawable(this, R.drawable.ic_place_24dp)
+//                val iconColorBitmap = tintImage(iconBitmap,coinColor)
+//                val icon = iconFactory.fromBitmap(iconColorBitmap)
                 // Build marker
-                val markerOpts = MarkerOptions().title(String.format("%.3f",coinValue)).snippet(coinCurrency).icon(icon).position(coinLatLng)
+//                val markerOpts = MarkerOptions().title(String.format("%.3f",coinValue)).snippet(coinCurrency).icon(icon).position(coinLatLng)
+                val markerOpts = MarkerOptions().title(String.format("%.3f",coinValue)).snippet(coinCurrency).position(coinLatLng)
                 Log.d(TAG, "[renderJson] marker was added into the map and into markerList\n")
                 val marker = map.addMarker(markerOpts)
-                markerList.put(coinId,marker)
+                markerList[coinId] = marker
             }
         }
     }
@@ -281,18 +285,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private fun initialiseLocationEngine() {
         locationEngine = LocationEngineProvider(this)
                 .obtainBestLocationEngineAvailable()
-        locationEngine.apply {
+        locationEngine!!.apply {
             interval = 5000 // preferably every 5 seconds
             fastestInterval = 1000 // at most every second
             priority = LocationEnginePriority.HIGH_ACCURACY
             activate()
         }
-        val lastLocation = locationEngine.lastLocation
+        val lastLocation = locationEngine!!.lastLocation
         if (lastLocation != null) {
             originLocation = lastLocation
             setCameraPosition(lastLocation)
         } else {
-            locationEngine.addLocationEngineListener(this)
+            locationEngine!!.addLocationEngineListener(this)
         }
     }
 
@@ -311,6 +315,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     cameraMode = CameraMode.TRACKING
                     renderMode = RenderMode.NORMAL
                 }
+                val lifecycle = lifecycle
+                lifecycle.addObserver(locationLayerPlugin)
             }
         }
     }
@@ -326,7 +332,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
             Log.d(TAG, "[onLocationChanged] location is null")
-        // No need to check distances if wallet is false
+        // No need to check distances if wallet is full
         } else if (walletList.size == MAX_COINS_LIMIT) {
             return
         } else {
@@ -339,21 +345,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val markerId = pair.key
                 val marker = pair.value
                 val distToMarker = distanceToMarker(originLocation,marker)
-                    // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
+                // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
-                    Log.d(TAG,"[onLocationChanged] Close to marker $markerId")
-                    mapIt.remove()
                     map!!.removeMarker(marker)
-                    Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "[onLocationChanged] Coin ${marker.snippet} with value ${marker.title} removed from map")
                     visitedMarkerIdList.add(markerId)
                     val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false)
                     walletList.add(coin)
                     numDayCollectedCoins++
+                    mapIt.remove()
+                    Log.d(TAG, "[onLocationChanged] Coin ${marker.snippet} with value ${marker.title} collected and added to wallet")
+                    Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected and added to wallet", Toast.LENGTH_SHORT).show()
+                    // Warn user if wallet is full
+                    if (walletList.size == MAX_COINS_LIMIT) {
+                        Toast.makeText(this,"Can't collect coins, clean up your wallet!", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 if (numDayCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
-                    //openCollectAllCoinsDialog()
                     bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100))
                     bankAccount!!.balance += 100.00
+                    Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
                     Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
                     receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
                 }
@@ -368,28 +379,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         return location.distanceTo(locationMarker)
     }
 
-    // Opening information dialog when user collects all coins on the day
-    // Add daily bonus (to be implemented) to bank account of user
-//    private fun openCollectAllCoinsDialog() {
-//        Log.d(TAG, "[openCollectAllCOinsDialog] Opening information dialog for collecting all coins")
-//        val allCoinsDialog = AlertDialog.Builder(this)
-//        allCoinsDialog.setTitle("Collected all coins!")
-//        // To be done: Change daily bonus value appropriately
-//        allCoinsDialog.setMessage("Congratulations, you have successfully collected all coins today!" +
-//         " You'll receive 100 GOLD into your bank account as a reward."
-//                + " Play again tomorrow to get another daily bonus.")
-//        // Clicking OK adds daily bonus and closes the dialog
-//        allCoinsDialog.setCancelable(false)
-//        allCoinsDialog.setPositiveButton("OK") { _: DialogInterface?, _: Int ->
-//            bankAccount.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount.balance+100))
-//        }
-//        allCoinsDialog.show()
-//    }
-
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
         Log.d(TAG, "[onConnected] requesting location updates")
-        locationEngine.requestLocationUpdates()
+        locationEngine!!.requestLocationUpdates()
     }
 
     override fun onExplanationNeeded(permissionsToExplain:
@@ -409,7 +402,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStart() {
         super.onStart()
         mapView?.onStart()
-         // Restore preferences
+        // Handle location engine
+        if (locationEngine != null) {
+            try {
+                locationEngine!!.requestLocationUpdates()
+            } catch (ignored: SecurityException) {}
+            locationEngine!!.addLocationEngineListener(this)
+        }
+        // Restore preferences
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         // Recall map variables
         downloadDate = settings.getString("lastDownloadDate", "")
@@ -451,6 +451,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStop() {
         super.onStop()
         mapView?.onStop()
+        // Handle location engine
+        if (locationEngine != null) {
+            locationEngine!!.removeLocationEngineListener(this)
+            locationEngine!!.removeLocationUpdates()
+        }
         mapString = mapJson.toString()
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         val editor = settings.edit()
@@ -459,7 +464,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString("lastCoinMap",mapString)
         editor.putString("numDayCollectedCoins", numDayCollectedCoins.toString())
         editor.putStringSet("visitedMarkers", visitedMarkerIdList)
-        Log.d(TAG, "[onStop] Stored lastDownloadDate of $downloadDate")
+        Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
         Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
         Log.d(TAG, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
         Log.d(TAG, "[onStop] Stored visited markers")
