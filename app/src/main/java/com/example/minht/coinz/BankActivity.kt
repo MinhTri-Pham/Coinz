@@ -3,7 +3,6 @@ package com.example.minht.coinz
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
@@ -17,8 +16,11 @@ class BankActivity : AppCompatActivity() {
     // Display variables
     private lateinit var usernameSummary : TextView
     private lateinit var balanceSummary : TextView
-    private lateinit var mListView : ListView
-    private lateinit var mListHeader : View
+    private lateinit var dateHeader : TextView
+    private lateinit var descHeader : TextView
+    private lateinit var amountHeader : TextView
+    private lateinit var balanceHeader : TextView
+    private lateinit var transferList : ListView
     private lateinit var bankAdapter : BankAdapter // Variable to display bank transfers
     // Bank account variable
     private lateinit var bankAccount: BankAccount
@@ -40,8 +42,16 @@ class BankActivity : AppCompatActivity() {
         db = FirebaseFirestore.getInstance()
         usernameSummary = findViewById(R.id.usernameSummary)
         balanceSummary = findViewById(R.id.balanceSummary)
-        mListView = findViewById(R.id.transfersList)
-        mListHeader = layoutInflater.inflate(R.layout.bank_header,null)
+        // Initialise header
+        dateHeader = findViewById(R.id.date_header)
+        dateHeader.text = "Date"
+        descHeader = findViewById(R.id.desc_header)
+        descHeader.text = "Description"
+        amountHeader = findViewById(R.id.amount_header)
+        amountHeader.text = "Amount"
+        balanceHeader = findViewById(R.id.balance_header)
+        balanceHeader.text = "Balance"
+        transferList = findViewById(R.id.transfersList)
     }
 
     override fun onStart() {
@@ -58,8 +68,8 @@ class BankActivity : AppCompatActivity() {
                 usernameSummary.text = "Account owner: " + bankAccount.owner
                 balanceSummary.text = "Account balance: " + String.format("%.2f",bankAccount.balance)
                 bankAdapter = BankAdapter(this,bankAccount.bankTransfers)
-                mListView.addHeaderView(mListHeader)
-                mListView.adapter = bankAdapter
+                //mListView.addHeaderView(mListHeader)
+                transferList.adapter = bankAdapter
             }
             else {
                 Log.d(TAG,"[onStart] Failed to load bank account")

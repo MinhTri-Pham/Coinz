@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val WALLET_KEY = "Wallet"
         const val BANK_ACCOUNT_KEY = "Bank"
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 4; // Maximum number of coins that can be collected on per day
+        const val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
         const val MAX_COINS_LIMIT = 1000;
     }
 

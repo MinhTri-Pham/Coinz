@@ -5,6 +5,7 @@ import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.*
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
@@ -22,6 +23,8 @@ class WalletActivity : AppCompatActivity() {
     private lateinit var coinListView : ListView
     private lateinit var transferButton: Button
     private lateinit var depositButton: Button
+    private lateinit var selectButton: Button
+    private lateinit var deselectButton: Button
 
     private var coinList : ArrayList<Coin> = ArrayList() // User's local wallet
     // Which coins were selected for further action
@@ -61,6 +64,7 @@ class WalletActivity : AppCompatActivity() {
         walletStateTextView = findViewById(R.id.wallet_state)
         coinListView = findViewById(R.id.coins_checkable_list)
         transferButton = findViewById(R.id.transfer_coins_button)
+        // Send selected coins to someone
         transferButton.setOnClickListener { _ ->
             getSelectedCoins()
             // Check if any coins were selected before proceeding to the next screen
@@ -78,6 +82,7 @@ class WalletActivity : AppCompatActivity() {
                 Log.d(TAG,"[onCreate] No coins selected for transfer")
             }
         }
+        // Deposit selected coins
         depositButton = findViewById(R.id.deposit_coins_button)
         depositButton.setOnClickListener{ _ ->
             // Check daily banking limit
@@ -104,12 +109,31 @@ class WalletActivity : AppCompatActivity() {
                 Toast.makeText(this,"Already banked 25 coins today, try again tomorrow!", Toast.LENGTH_SHORT).show()
                 Log.d(TAG,"[onCreate] Reached banking limit")
             }
-
+        }
+        // Check all coins
+        selectButton = findViewById(R.id.select_all_button)
+        selectButton.setOnClickListener {_ : View ->
+            for (coin in coinList) {
+                coin.selected = true
+                selectedCoinList.clear()
+                selectedCoinList.addAll(coinList)
+                walletAdapter = WalletAdapter(this, coinList)
+                coinListView.adapter = walletAdapter
+            }
+        }
+        // Uncheck all coins
+        deselectButton = findViewById(R.id.deselect_all_button)
+        deselectButton.setOnClickListener { _:View ->
+            for (coin in coinList) {
+                coin.selected = false
+                selectedCoinList.clear()
+                walletAdapter = WalletAdapter(this, coinList)
+                coinListView.adapter = walletAdapter
+            }
         }
     }
 
     // Extract which coins were selected
-    // Also make counts per currency
     private fun getSelectedCoins() {
         for (coin in coinList) {
             if (coin.selected) {
@@ -178,7 +202,7 @@ class WalletActivity : AppCompatActivity() {
                 // Load wallet
                 var dataString = task.result!!.get(WALLET_KEY).toString()
                 Log.d(TAG, "[loadData] Loaded wallet as $dataString")
-                if (dataString.equals("[]")) {
+                if (dataString == "[]") {
                     Log.d(TAG, "[loadData] No coins collected yet")
                     coinList = ArrayList()
 
@@ -201,7 +225,6 @@ class WalletActivity : AppCompatActivity() {
                 Toast.makeText(this, "Failed to load your data, check your internet connection!", Toast.LENGTH_SHORT).show()
             }
         }
-
     }
 
     // Saves data into Firestore
