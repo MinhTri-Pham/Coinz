@@ -58,7 +58,7 @@ class WalletActivity : AppCompatActivity() {
         const val WALLET_KEY = "Wallet"
         const val GIFTS_KEY = "Gifts"
         const val BANK_ACCOUNT_KEY = "Bank"
-        const val MAX_GIFTS = 10 // Maximum number of unopened gifts one can have
+        const val MAX_GIFTS = 2 // Maximum number of unopened gifts one can have
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,7 +88,7 @@ class WalletActivity : AppCompatActivity() {
                 userDialog.show()
                 // Pressing "Confirm transfer" processes this transfer
                 // Details in the makeTransfer function
-                userDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { _:View ->
+                userDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { _: View ->
                     makeTransfer(usernameInput.text.toString(), userDialog)
                 }
                 // Pressing "Cancel" closes the prompt dialog and all coins are deselected
@@ -97,7 +97,6 @@ class WalletActivity : AppCompatActivity() {
                     deselectAll()
                     userDialog.dismiss()
                 }
-
             }
             else {
                 Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
@@ -171,59 +170,67 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-
-    // Transfer selected coins to given user, return if it was successful
+    // Transfer selected coins to given user
     private fun makeTransfer(recipientUsername: String, dialog: AlertDialog) {
-        if (!recipientUsername.isEmpty()) {
-            val usersRef = db.collection(COLLECTION_KEY)
-            val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
-            findUsernameQuery.get().addOnCompleteListener{task: Task<QuerySnapshot> ->
-                if (task.isSuccessful) {
-                    val doc = task.result;
-                    // Check if chosen username exists
-                    if (!doc!!.isEmpty) {
-                        // If input valid, process appropriately and close the prompt dialog
-                        val recipientId = doc.documents[0].id
-                        var recipientGiftsString = doc.documents[0].get(GIFTS_KEY).toString()
-                        val type = object : TypeToken<ArrayList<Gift>>() {}.type
-                        val recipientGifts : ArrayList<Gift> = gson.fromJson(recipientGiftsString,type)
-                        if (recipientGifts.size < MAX_GIFTS) {
-                            // Handle correct username later
-                            val gift = Gift(getCurrentDate(), "DummyUser", selectedCoinList)
-                            recipientGifts.add(gift)
-                            recipientGiftsString = gson.toJson(recipientGifts)
-                            db.collection(COLLECTION_KEY).document(recipientId).update(GIFTS_KEY,recipientGiftsString)
-                            Log.d(TAG, "[makeTransfer] Updated wallet of recipient as $recipientGiftsString")
-                            coinList.removeAll(selectedCoinList)
-                            val userWalletString = gson.toJson(coinList)
-                            db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
-                            Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
-                            dialog.dismiss() // Close prompt dialog
-                            updateScreen() // Refresh screen
+        val usersRef = db.collection(COLLECTION_KEY)
+        val userDoc = usersRef.document(mAuth.uid!!)
+        userDoc.get().addOnCompleteListener{task: Task<DocumentSnapshot> ->
+            if (task.isSuccessful) {
+                val mUsername = task.result!!.getString(USERNAME_KEY) // Username of current user
+                if (!recipientUsername.isEmpty()) {
+                    val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
+                    findUsernameQuery.get().addOnCompleteListener{task: Task<QuerySnapshot> ->
+                        if (task.isSuccessful) {
+                            val doc = task.result;
+                            // Check if chosen username exists
+                            if (!doc!!.isEmpty) {
+                                // If input valid, process appropriately and close the prompt dialog
+                                val recipientId = doc.documents[0].id
+                                var recipientGiftsString = doc.documents[0].get(GIFTS_KEY).toString()
+                                val type = object : TypeToken<ArrayList<Gift>>() {}.type
+                                val recipientGifts : ArrayList<Gift> = gson.fromJson(recipientGiftsString,type)
+                                if (recipientGifts.size < MAX_GIFTS) {
+                                    val gift = Gift(getCurrentDate(), mUsername!!, selectedCoinList)
+                                    recipientGifts.add(gift)
+                                    recipientGiftsString = gson.toJson(recipientGifts)
+                                    usersRef.document(recipientId).update(GIFTS_KEY,recipientGiftsString)
+                                    Log.d(TAG, "[makeTransfer] Updated wallet of recipient as $recipientGiftsString")
+                                    coinList.removeAll(selectedCoinList)
+                                    val userWalletString = gson.toJson(coinList)
+                                    usersRef.document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
+                                    Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
+                                    dialog.dismiss() // Close prompt dialog
+                                    updateScreen() // Refresh screen
+                                }
+                                else {
+                                    // If chosen person already has max number of unopened gifts, warn user
+                                    // Don't close prompt window
+                                    Log.d(TAG, "[makeTransfer] Input user already has maximum number of gifts")
+                                    Toast.makeText(this, "Chosen user already has maximum number of gifts! Try a different one", Toast.LENGTH_SHORT).show()
+                                }
+
+                            }
+                            else {
+                                // If invalid input, warn user and don't close the prompt window
+                                Log.d(TAG, "[makeTransfer] Input user doesn't exist")
+                                Toast.makeText(this, "Entered username doesn't exist! Try a different one", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         else {
-                            // If chosen person already has max number of unopened gifts, warn user
-                            // Don't close prompt window
-                            Log.d(TAG, "[makeTransfer] Input user already has maximum number of gifts")
-                            Toast.makeText(this, "Chosen user already has maximum number of gifts! Try a different one", Toast.LENGTH_SHORT).show()
+                            Log.d(TAG,"[makeTransfer] Error getting data")
                         }
-
-                    }
-                    else {
-                        // If invalid input, warn user and don't close the prompt window
-                        Log.d(TAG, "[makeTransfer] Input user doesn't exist")
-                        Toast.makeText(this, "Entered username doesn't exist! Try a different one", Toast.LENGTH_SHORT).show()
                     }
                 }
                 else {
-                    Log.d(TAG,"[makeTransfer] Error getting data")
+                    // If blank input, warn user and don't close the prompt window
+                    Log.d(TAG,"[makeTransfer] Can't query since input was empty")
+                    Toast.makeText(this, "Choose a player to send coins to", Toast.LENGTH_SHORT).show()
                 }
             }
-        }
-        else {
-            // If blank input, warn user and don't close the prompt window
-            Log.d(TAG,"[makeTransfer] Can't query since input was empty")
-            Toast.makeText(this, "Choose a player to send coins to", Toast.LENGTH_SHORT).show()
+            else {
+                Toast.makeText(this,"Transfer failed, error with loading data", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "[makeTransfer] Error loading data")
+            }
         }
     }
 
@@ -276,7 +283,7 @@ class WalletActivity : AppCompatActivity() {
         selectedCoinList.clear()
     }
 
-    // Returns today's date in format: YYYY/MM/DD
+    // Returns today's date in format YYYY/MM/DD
     private fun getCurrentDate() : String {
         val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
         val result = sdf.format(Date())

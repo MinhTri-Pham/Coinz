@@ -10,7 +10,7 @@
         android:id = "@+id/usernameSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="15dp"
+        android:padding="12dp"
         android:textSize="18sp"
         android:textColor="@android:color/background_dark"/>
 
@@ -18,16 +18,33 @@
         android:id = "@+id/balanceSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="15dp"
+        android:padding="12dp"
         android:textSize="18sp"
         android:textColor="@android:color/background_dark"/>
+
+    <TextView
+        android:id = "@+id/displayPeriodDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text = "Display period"
+        android:padding="12dp"
+        android:textSize="18sp"
+        android:textColor="@android:color/background_dark"/>
+
+    <Spinner
+        android:id="@+id/displayPeriodSpinner"
+        android:padding="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textColor="@android:color/background_dark">
+    </Spinner>
 
     <TextView
         android:id = "@+id/transfersDesc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="15dp"
-        android:text = "Recent transfers:"
+        android:padding="12dp"
         android:textSize="18sp"
         android:textColor="@android:color/background_dark"/>
 
@@ -36,7 +53,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="#ff8c00"
-        android:layout_margin="15dp"
+        android:layout_margin="12dp"
         >
         <TextView android:id="@+id/date_header"
             android:layout_width="0dp"

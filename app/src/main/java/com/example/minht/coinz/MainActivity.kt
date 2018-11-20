@@ -425,7 +425,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
         Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-        Log.d(TAG, "[onStart] Recalled numDayCollectCoins is $numDayCollectedCoins")
+        Log.d(TAG, "[onStart] Recalled number of collected coins is $numDayCollectedCoins")
         Log.d(TAG, "[onStart] Recalled visited markers")
         // Recall exchange rates
         penyRate = settings.getString("penyRate","0.0").toDouble()
