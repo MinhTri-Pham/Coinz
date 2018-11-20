@@ -29,7 +29,7 @@ class BankActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
 
     companion object {
-        const val TAG = "WalletActivity" // For logging purposes
+        const val TAG = "BankActivity" // For logging purposes
         // For accessing data in Firestore
         const val COLLECTION_KEY = "Users"
         const val BANK_ACCOUNT_KEY = "Bank"

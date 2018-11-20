@@ -47,15 +47,6 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
         holder.coinCheckBox!!.setOnClickListener{_ : View ->
             val pos = holder.coinCheckBox!!.tag as Int
             Log.d(TAG, "[getView] Checkbox $pos clicked!")
-
-//            if (dataSource[pos].selected) {
-//                dataSource[pos].selected = false
-//                //public_coinArrayList = dataSource
-//            }
-//            else {
-//                dataSource[pos].selected = true
-//                //public_coinArrayList = dataSource
-//            }
             // Change status of Coin when checkbox clicked
             dataSource[pos].selected = !dataSource[pos].selected
             Log.d(TAG, "[getView] Reversed status of coin at $pos")
@@ -64,7 +55,7 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
         return view
     }
 
-    private inner class ViewHolder {
+    private class ViewHolder {
         var coinCheckBox: CheckBox? = null
         var coinSummary: TextView? = null
     }

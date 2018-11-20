@@ -9,7 +9,7 @@ import android.widget.BaseAdapter
 import android.widget.TextView
 
 // Custom adapter to display bank transfers
-class BankAdapter(private val context: Context, private val dataSource: ArrayList<BankTransfer>) : BaseAdapter() {
+class BankAdapter(context: Context, private val dataSource: ArrayList<BankTransfer>) : BaseAdapter() {
     private val inflater : LayoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
     override fun getCount(): Int {

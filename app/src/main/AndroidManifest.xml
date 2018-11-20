@@ -33,13 +33,11 @@
         <activity
             android:name=".RegisterActivity"
             android:label="Register">
-
         </activity>
         <activity
             android:name=".WalletActivity"
             android:label="Wallet"
             android:parentActivityName=".MainActivity">
-
         </activity>
         <activity
             android:name=".SelectRecipientActivity"
@@ -50,6 +48,10 @@
             android:name=".BankActivity"
             android:label="Bank Account"
             android:parentActivityName=".WalletActivity">
+        </activity>
+        <activity
+            android:name=".GiftActivity"
+            android:label = "Gifts">
         </activity>
     </application>
 

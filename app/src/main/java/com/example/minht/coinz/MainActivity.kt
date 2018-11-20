@@ -187,10 +187,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 // First time playing today
                 // Reset values and download coin map
                 Log.d(TAG,"[onMapReady] First time playing today, reset values and download map from server")
-                downloadDate = currDate
-                numDayCollectedCoins = 0
-                visitedMarkerIdList = mutableSetOf()
-                val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$downloadDate/coinzmap.geojson"
+//                downloadDate = currDate
+//                numDayCollectedCoins = 0
+//                visitedMarkerIdList = mutableSetOf()
+                val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currDate/coinzmap.geojson"
                 Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
                 val downloadFileTask = DownloadFileTask(this)
                 downloadFileTask.execute(downloadUrl)
@@ -420,11 +420,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         else {
             mapJson = JSONObject(mapString)
         }
-        numDayCollectedCoins = settings.getString("numDayCollectedCoins","0").toInt()
+
+        numDayCollectedCoins = settings.getInt("numDayCollectCoins",0)
         visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
         Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-        Log.d(TAG, "[onStart] Recalled numDayCollectedCoins is $numDayCollectedCoins")
+        Log.d(TAG, "[onStart] Recalled numDayCollectCoins is $numDayCollectedCoins")
         Log.d(TAG, "[onStart] Recalled visited markers")
         // Recall exchange rates
         penyRate = settings.getString("penyRate","0.0").toDouble()
@@ -462,7 +463,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         // Store map values in Shared Preferences
         editor.putString("lastDownloadDate", downloadDate)
         editor.putString("lastCoinMap",mapString)
-        editor.putString("numDayCollectedCoins", numDayCollectedCoins.toString())
+        editor.putInt("numDayCollectCoins", 0)
         editor.putStringSet("visitedMarkers", visitedMarkerIdList)
         Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
         Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
@@ -498,19 +499,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val userDocRef = db.collection(COLLECTION_KEY).document(uid)
         userDocRef.get().addOnCompleteListener{ task : Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
-                // Load wallet
-                var dataString = task.result!!.get(WALLET_KEY).toString()
-                Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
-                if (dataString.equals("[]")) {
-                    walletList = ArrayList()
-                } else {
+                val taskResult = task.result
+                if (taskResult!!.exists()) {
+                    // Load wallet
+                    var dataString = taskResult.get(WALLET_KEY).toString()
+                    Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
                     walletList = gson.fromJson(dataString, type)
+                    // Load bank account
+                    dataString = taskResult.get(BANK_ACCOUNT_KEY).toString()
+                    Log.d(TAG,"[loadData] Loaded bank account as: $dataString")
+                    bankAccount = gson.fromJson(dataString, BankAccount::class.java)
                 }
-                // Load bank account
-                dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
-                Log.d(TAG,"[loadData] Loaded bank account as: $dataString")
-                bankAccount = gson.fromJson(dataString, BankAccount::class.java)
+                else {
+                    Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[loadData] couldn't find document $uid")
+                }
             } else {
                 Log.d(TAG,"[loadData] Failed to load data")
                 Toast.makeText(this, "Failed to load your data, check your internet connection!", Toast.LENGTH_SHORT).show()
@@ -539,13 +543,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     override fun downloadComplete(result: JSONObject) {
         mapJson = result
         if (mapJson.length() != 0) {
-            Log.d(TAG, "[downloadComplete] successfully extracted map as JSON object")
+            Log.d(TAG, "[downloadComplete] Successfully extracted map")
+            // Reset daily values
+            downloadDate = getCurrentDate()
+            numDayCollectedCoins = 0
+            visitedMarkerIdList = mutableSetOf()
             // Render markers after download was completed
             renderJson(map, mapJson)
             updateExchangeRates(mapJson)
         }
         else {
-            Log.d(TAG, "[downloadComplete] couldn't extract map")
+            Log.d(TAG, "[downloadComplete] Couldn't extract map")
         }
     }
 
@@ -577,13 +585,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     saveData()
                     Log.d(TAG,"[onNavigationItemSelected] Signing out user $uid")
                     mAuth.signOut()
-//                    val resetIntent = Intent(this, LoginActivity::class.java)
-//                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-//                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-//                    startActivity(resetIntent)
+                    // Clear activity stack
+                    val resetIntent = Intent(this, LoginActivity::class.java)
+                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(resetIntent)
                     Toast.makeText(this,"Successfully signed out", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this,LoginActivity::class.java))
-                    finish()
                 }
                 // Otherwise nothing happens
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
@@ -598,6 +605,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             R.id.bank_account -> {
                 saveData()
                 startActivity(Intent(this,BankActivity::class.java))
+            }
+            R.id.gifts -> {
+                saveData()
+                startActivity(Intent(this, GiftActivity::class.java))
             }
         }
         return true
