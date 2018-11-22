@@ -179,9 +179,9 @@ class WalletActivity : AppCompatActivity() {
                 val mUsername = task.result!!.getString(USERNAME_KEY) // Username of current user
                 if (!recipientUsername.isEmpty()) {
                     val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
-                    findUsernameQuery.get().addOnCompleteListener{task: Task<QuerySnapshot> ->
-                        if (task.isSuccessful) {
-                            val doc = task.result;
+                    findUsernameQuery.get().addOnCompleteListener{taskQuery: Task<QuerySnapshot> ->
+                        if (taskQuery.isSuccessful) {
+                            val doc = taskQuery.result;
                             // Check if chosen username exists
                             if (!doc!!.isEmpty) {
                                 // If input valid, process appropriately and close the prompt dialog

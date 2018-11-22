@@ -40,11 +40,6 @@
             android:parentActivityName=".MainActivity">
         </activity>
         <activity
-            android:name=".SelectRecipientActivity"
-            android:label="Select player for transfer"
-            android:parentActivityName=".WalletActivity">
-        </activity>
-        <activity
             android:name=".BankActivity"
             android:label="Bank Account"
             android:parentActivityName=".WalletActivity">

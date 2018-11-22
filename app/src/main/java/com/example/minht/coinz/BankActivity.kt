@@ -88,6 +88,14 @@ class BankActivity : AppCompatActivity() {
                         displayPeriod = 14
                         transferDesc.text = "Transfers in today:"
                     }
+                    "Last month" -> {
+                        val now = Date() // Current time
+                        val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+                        val nowString = sdf.format(now).toString()
+                        displayPeriod = nowString.substring(8).toInt()
+                        Log.d(TAG,"Display period is $displayPeriod days")
+                        transferDesc.text = "Transfers in last month:"
+                    }
                 }
                 Log.d(TAG, "[initSpinner] $option selected as display period")
                 filterTransfers()
@@ -120,8 +128,6 @@ class BankActivity : AppCompatActivity() {
             }
         }
         bankAccount.bankTransfers.reverse() // Reset for future uses
-
-
     }
 
     override fun onStart() {

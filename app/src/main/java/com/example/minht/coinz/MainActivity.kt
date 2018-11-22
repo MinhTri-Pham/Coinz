@@ -426,7 +426,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
         Log.d(TAG, "[onStart] Recalled number of collected coins is $numDayCollectedCoins")
-        Log.d(TAG, "[onStart] Recalled visited markers")
+        Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerIdList.size}\")")
         // Recall exchange rates
         penyRate = settings.getString("penyRate","0.0").toDouble()
         dolrRate = settings.getString("dolrRate","0.0").toDouble()
@@ -468,7 +468,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
         Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
         Log.d(TAG, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
-        Log.d(TAG, "[onStop] Stored visited markers")
+        Log.d(TAG, "[onStop] Stored number of visited markers today as ${visitedMarkerIdList.size}")
         // Store exchange rates in Shared Preferences
         editor.putString("penyRate", penyRate.toString())
         editor.putString("dolrRate", dolrRate.toString())
