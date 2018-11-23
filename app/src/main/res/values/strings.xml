@@ -4,7 +4,7 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_login">Coinz</string>
     <!-- Options for display period in BankActivity Spinner -->
-    <string-array name="displayPeriods" >
+    <string-array name="displayPeriods">
         <!-- Default one is "Last week" -->
         <item>Last week</item>
         <item>Today</item>

@@ -19,10 +19,6 @@ class BankActivity : AppCompatActivity() {
     private lateinit var usernameSummary : TextView
     private lateinit var balanceSummary : TextView
     private lateinit var transferDesc : TextView
-    private lateinit var dateHeader : TextView
-    private lateinit var descHeader : TextView
-    private lateinit var amountHeader : TextView
-    private lateinit var balanceHeader : TextView
     private lateinit var transferList : ListView
 
     // Bank account and display period
@@ -50,15 +46,15 @@ class BankActivity : AppCompatActivity() {
         usernameSummary = findViewById(R.id.usernameSummary)
         balanceSummary = findViewById(R.id.balanceSummary)
         transferDesc = findViewById(R.id.transfersDesc)
-        // Initialise header
-        dateHeader = findViewById(R.id.date_header)
-        dateHeader.text = "Date"
-        descHeader = findViewById(R.id.desc_header)
-        descHeader.text = "Description"
-        amountHeader = findViewById(R.id.amount_header)
-        amountHeader.text = "Amount"
-        balanceHeader = findViewById(R.id.balance_header)
-        balanceHeader.text = "Balance"
+//        // Initialise header
+//        dateHeader = findViewById(R.id.date_header)
+//        dateHeader.text = "Date"
+//        descHeader = findViewById(R.id.desc_header)
+//        descHeader.text = "Description"
+//        amountHeader = findViewById(R.id.amount_header)
+//        amountHeader.text = "Amount"
+//        balanceHeader = findViewById(R.id.balance_header)
+//        balanceHeader.text = "Balance"
         transferList = findViewById(R.id.transfersList)
         // Initialise display period spinner using default items
         displayPeriodSpinner = findViewById(R.id.displayPeriodSpinner)

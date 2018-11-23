@@ -1,5 +1,6 @@
 package com.example.minht.coinz
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
 import android.support.v7.app.AppCompatActivity
@@ -48,10 +49,10 @@ class WalletActivity : AppCompatActivity() {
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db : FirebaseFirestore
     private lateinit var gson : Gson
-    private val preferencesFile = "MyPrefsFile" // For storing preferences
 
     companion object {
-        const val TAG = "WalletActivity" // For logging purposes
+        const val PREFS_FILE = "MyPrefsFile" // Storing data
+        const val TAG = "WalletActivity" // Logging purposes
         // For accessing data in Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY = "Username"
@@ -61,6 +62,7 @@ class WalletActivity : AppCompatActivity() {
         const val MAX_GIFTS = 2 // Maximum number of unopened gifts one can have
     }
 
+    @SuppressLint("InflateParams")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wallet)
@@ -181,7 +183,7 @@ class WalletActivity : AppCompatActivity() {
                     val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
                     findUsernameQuery.get().addOnCompleteListener{taskQuery: Task<QuerySnapshot> ->
                         if (taskQuery.isSuccessful) {
-                            val doc = taskQuery.result;
+                            val doc = taskQuery.result
                             // Check if chosen username exists
                             if (!doc!!.isEmpty) {
                                 // If input valid, process appropriately and close the prompt dialog
@@ -354,7 +356,7 @@ class WalletActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         // Load exchange rates from Shared Preferences
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         penyRate = settings.getString("penyRate","0.0").toDouble()
         dolrRate = settings.getString("dolrRate","0.0").toDouble()
         quidRate = settings.getString("quidRate","0.0").toDouble()

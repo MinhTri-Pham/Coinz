@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 
-class GiftAdapter (private val context: Context, private val dataSource: ArrayList<Gift>) : BaseAdapter() {
+class GiftAdapter (context: Context, private val dataSource: ArrayList<Gift>) : BaseAdapter() {
 
     private val inflater: LayoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
@@ -45,5 +45,4 @@ class GiftAdapter (private val context: Context, private val dataSource: ArrayLi
     private class ViewHolder {
         lateinit var giftSummaryTextView : TextView
     }
-
 }

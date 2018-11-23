@@ -1,5 +1,6 @@
 package com.example.minht.coinz
 
+import android.content.Context
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -9,8 +10,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.*
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,6 +36,10 @@ class RegisterActivity : AppCompatActivity() {
         const val WALLET_KEY = "Wallet"
         const val BANK_KEY = "Bank"
         const val GIFTS_KEY = "Gifts"
+        const val SCORE_KEY = "Score"
+        // For holding user count in SharedPreferences
+        const val PREFS_FILE = "MyPrefsFile"
+        const val NUM_PLAYERS_KEY = "numPlayers"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,10 +48,10 @@ class RegisterActivity : AppCompatActivity() {
 
         mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
-        val settings = FirebaseFirestoreSettings.Builder()
-                .setTimestampsInSnapshotsEnabled(true)
-                .build()
-        db.firestoreSettings = settings
+//        val settings = FirebaseFirestoreSettings.Builder()
+//                .setTimestampsInSnapshotsEnabled(true)
+//                .build()
+//        db.firestoreSettings = settings
         registerButton = findViewById<View>(R.id.buttonRegister) as Button
         loginLink = findViewById<View>(R.id.signInLink) as TextView
 
@@ -89,13 +92,24 @@ class RegisterActivity : AppCompatActivity() {
                                 val emptyBankTransfers = ArrayList<BankTransfer>()
                                 val emptyGifts = ArrayList<Gift>()
                                 val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
-                                val gson = Gson();
+                                val gson = Gson()
                                 user[WALLET_KEY] = gson.toJson(emptyWallet)
                                 user[BANK_KEY] = gson.toJson(emptyBankAccount)
                                 user[GIFTS_KEY] = gson.toJson(emptyGifts)
+                                user[SCORE_KEY] = 0
                                 db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
                                     Log.d(TAG,"[registerUser] Created new user")
                                     Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
+                                    // Update user count in Shared Preferences
+                                    val prefs = getSharedPreferences(PREFS_FILE,Context.MODE_PRIVATE)
+                                    var numPlayers = prefs.getInt(NUM_PLAYERS_KEY,0)
+                                    Log.d(TAG,"[registerUser] Recalled number of players as $numPlayers")
+                                    numPlayers++
+                                    val editor = prefs.edit()
+                                    editor.putInt(NUM_PLAYERS_KEY,numPlayers)
+                                    editor.apply()
+                                    Log.d(TAG,"[registerUser] Updated number of players to $numPlayers")
+
                                 }
                             } else {
                                 Log.d(TAG,"[registerUser] Registration failed due to bad credentials")

@@ -39,7 +39,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
-import com.mapbox.mapboxsdk.annotations.IconFactory
+//import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import org.json.JSONObject
@@ -62,14 +62,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Coin collection mechanism variables
-    private var numDayCollectedCoins = 0; // Number of coins collected on the current day
+    private var numDayCollectedCoins = 0 // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
     private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
     private var receivedDailyBonus = false // Whether player received daily bonus already
 
-    // Shared preferences and map downloading
-    private val preferencesFile = "MyPrefsFile" // For storing preferences
+    // Map downloading
     private var downloadDate = "" // Format: YYYY/MM/DD
     private var mapString = "" // String with map data
     private lateinit var mapJson : JSONObject // JSON object of map
@@ -91,6 +90,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Constants
     companion object {
+        val PREFS_FILE = "MyPrefsFile" // Storing data
         const val TAG = "MainActivity" // Logging purposes
         // Keys to access values in Firestore
         const val COLLECTION_KEY = "Users"
@@ -99,8 +99,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val WALLET_KEY = "Wallet"
         const val BANK_ACCOUNT_KEY = "Bank"
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 50; // Maximum number of coins that can be collected on per day
-        const val MAX_COINS_LIMIT = 15; // Maximum number of coins that can be in the wallet at any time
+        const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected on per day
+        const val MAX_COINS_LIMIT = 15 // Maximum number of coins that can be in the wallet at any time
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             // Get current date
             val currDate = getCurrentDate()
-            if (currDate.equals(downloadDate)) {
+            if (currDate == downloadDate) {
                 // Only for testing purposes - reset progress
 //                numDayCollectedCoins = 0
 //                visitedMarkerIdList = mutableSetOf()
@@ -410,11 +410,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             locationEngine!!.addLocationEngineListener(this)
         }
         // Restore preferences
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         // Recall map variables
         downloadDate = settings.getString("lastDownloadDate", "")
         mapString = settings.getString("lastCoinMap","")
-        if (mapString.equals("")) {
+        if (mapString == "") {
             mapJson = JSONObject()
         }
         else {
@@ -458,7 +458,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             locationEngine!!.removeLocationUpdates()
         }
         mapString = mapJson.toString()
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         val editor = settings.edit()
         // Store map values in Shared Preferences
         editor.putString("lastDownloadDate", downloadDate)
@@ -609,6 +609,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             R.id.gifts -> {
                 saveData()
                 startActivity(Intent(this, GiftActivity::class.java))
+            }
+            R.id.leaderboard -> {
+                saveData()
+                startActivity(Intent(this, LeaderboardActivity::class.java))
             }
         }
         return true
