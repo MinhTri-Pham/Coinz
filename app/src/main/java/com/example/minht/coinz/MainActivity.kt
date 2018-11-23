@@ -88,6 +88,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var quidRate = 0.0
     private var shilRate = 0.0
 
+    // User info
+    private var userName = ""
+    private var userScore = 0.0
+
     // Constants
     companion object {
         val PREFS_FILE = "MyPrefsFile" // Storing data
@@ -98,6 +102,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val EMAIL_KEY = "Email"
         const val WALLET_KEY = "Wallet"
         const val BANK_ACCOUNT_KEY = "Bank"
+        const val SCORE_KEY = "Score"
+        // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
         const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected on per day
         const val MAX_COINS_LIMIT = 15 // Maximum number of coins that can be in the wallet at any time
@@ -135,9 +141,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val userRef = db.collection(COLLECTION_KEY).document(uid)
         userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
             if (documentSnapshot!!.exists()) {
-                val username = documentSnapshot.getString(USERNAME_KEY)
+                userName = documentSnapshot.getString(USERNAME_KEY)!!
                 val email = documentSnapshot.getString(EMAIL_KEY)
-                val usernameText = "Welcome back $username!"
+                val usernameText = "Welcome back $userName!"
                 navUsernameText.text = usernameText
                 navEmailText.text = email
                 Log.d(TAG,"[onCreate] Created welcome message")
@@ -187,9 +193,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 // First time playing today
                 // Reset values and download coin map
                 Log.d(TAG,"[onMapReady] First time playing today, reset values and download map from server")
-//                downloadDate = currDate
-//                numDayCollectedCoins = 0
-//                visitedMarkerIdList = mutableSetOf()
+                downloadDate = currDate
+                numDayCollectedCoins = 0
+                visitedMarkerIdList = mutableSetOf()
                 val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currDate/coinzmap.geojson"
                 Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
                 val downloadFileTask = DownloadFileTask(this)
@@ -502,14 +508,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val taskResult = task.result
                 if (taskResult!!.exists()) {
                     // Load wallet
-                    var dataString = taskResult.get(WALLET_KEY).toString()
+                    var dataString = taskResult.getString(WALLET_KEY)
                     Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
                     walletList = gson.fromJson(dataString, type)
                     // Load bank account
-                    dataString = taskResult.get(BANK_ACCOUNT_KEY).toString()
+                    dataString = taskResult.getString(BANK_ACCOUNT_KEY)
                     Log.d(TAG,"[loadData] Loaded bank account as: $dataString")
                     bankAccount = gson.fromJson(dataString, BankAccount::class.java)
+                    // Load score
+                    userScore = taskResult.getDouble(SCORE_KEY)!!
                 }
                 else {
                     Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
@@ -612,7 +620,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             R.id.leaderboard -> {
                 saveData()
-                startActivity(Intent(this, LeaderboardActivity::class.java))
+                val leaderboardIntent = Intent(this,LeaderboardActivity::class.java)
+                leaderboardIntent.putExtra(USERNAME_KEY,userName)
+                leaderboardIntent.putExtra(SCORE_KEY,userScore)
+                startActivity(leaderboardIntent)
+                //startActivity(Intent(this, LeaderboardActivity::class.java))
             }
         }
         return true

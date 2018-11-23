@@ -23,11 +23,18 @@ class LeaderboardActivity : AppCompatActivity() {
     private lateinit var scoreListView : ListView
     private lateinit var scoreAdapter : LeaderboardItemAdapter
 
+    // User's stats
+    private var userRank =-1
+    private var userName = ""
+    private var userScore = 0.0
+    private lateinit var userRankTextView: TextView
+    private lateinit var userNameTextView: TextView
+    private lateinit var userScoreTextView: TextView
 
     companion object {
         const val PREFS_FILE = "MyPrefsFile" // Storing data
         const val TAG = "LeaderboardActivity" // Debugging purposes
-        const val DEFAULT_DISPLAY_NUM = 10
+        const val DEFAULT_DISPLAY_NUM = 3
         // Keys in Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY= "Username"
@@ -42,21 +49,30 @@ class LeaderboardActivity : AppCompatActivity() {
         db = FirebaseFirestore.getInstance()
         scoreTextView = findViewById(R.id.scoresTextView)
         scoreListView = findViewById(R.id.scores)
+        userRankTextView = findViewById(R.id.playerRank)
+        userNameTextView = findViewById(R.id.playerUsername)
+        userScoreTextView = findViewById(R.id.playerScore)
     }
 
     override fun onStart() {
         super.onStart()
+        val bundle = intent.extras
+        userName= bundle.getString(USERNAME_KEY)
+        userScore = bundle.getDouble(SCORE_KEY)
+        userNameTextView.text = userName
+        userScoreTextView.text = String.format("%.2f",userScore)
+        Log.d(TAG, "[onStart] Username of current user: $userName")
+        Log.d(TAG, "[onStart] Score of current user: $userScore")
+        cleanUp()
         generateLeaderboard()
     }
 
     // Generate current leaderboard
     // Read Firestore, order by score field
     private fun generateLeaderboard() {
-        leaderboard.clear() // Reset leaderboard
-        numDisplayItems = DEFAULT_DISPLAY_NUM // Reset number of displayed items to default
         // First need total number of user of the app
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        val numPlayers = settings.getInt(NUM_PLAYERS_KEY,0)
+        val numPlayers = settings.getInt(NUM_PLAYERS_KEY,1)
         Log.d(TAG,"[generateLeaderboard] There are $numPlayers players")
         val usersRef = db.collection(COLLECTION_KEY)
         // If less users than default number, only display that number of items
@@ -79,7 +95,15 @@ class LeaderboardActivity : AppCompatActivity() {
                                 continue
                             }
                             else {
-                                val leaderBoardItem = LeaderboardItem(rank,username,score)
+                                var leaderBoardItem:LeaderboardItem?
+                                if (username == userName) {
+                                    Log.d(TAG,"[generateLeaderboard] Current user found")
+                                    leaderBoardItem = LeaderboardItem(rank,username,score, true)
+                                    userRank = rank
+                                }
+                                else {
+                                    leaderBoardItem = LeaderboardItem(rank,username,score, false)
+                                }
                                 leaderboard.add(leaderBoardItem)
                                 rank++
                                 Log.d(TAG,"[generateLeaderboard] Item [$leaderBoardItem] added")
@@ -87,11 +111,47 @@ class LeaderboardActivity : AppCompatActivity() {
                         }
                         scoreAdapter = LeaderboardItemAdapter(this,leaderboard)
                         scoreListView.adapter=scoreAdapter
+                        // Find rank of player
+                        if (userRank == -1) {
+                            // If player not in top players, need to find how many players have a higher score
+                            Log.d(TAG,"[generateLeaderboard] Player not in top, need more to find rank")
+                            findUserRank()
+                        }
+                        else {
+                            // If user in top players, we already have his rank
+                            Log.d(TAG,"[generateLeaderboard] Player in top, use already obtained rank")
+                            userRankTextView.text = userRank.toString()
+                        }
                     }
                     else {
                         Log.d(TAG,"[generateLeaderboard] Problem fetching data")
                         Toast.makeText(this,"Failed to load data, check your internet connection", Toast.LENGTH_SHORT).show()
                     }
                 }
+    }
+
+    // Find rank of current user
+    // Used when user not in top list
+    private fun findUserRank() {
+        val usersRef = db.collection(COLLECTION_KEY)
+        usersRef.whereGreaterThan(SCORE_KEY,userScore).get().addOnCompleteListener{task : Task<QuerySnapshot> ->
+            if (task.isSuccessful) {
+                val rank = task.result!!.documents.size + 1
+                userRankTextView.text = rank.toString()
+                Log.d(TAG,"[findUserRank] User's rank is $rank")
+            }
+            else {
+                Log.d(TAG,"[findUserRank] Problem fetching data")
+                Toast.makeText(this,"Failed to load data, check your internet connection", Toast.LENGTH_SHORT).show()
+                userRankTextView.text = "-"
+            }
+        }
+    }
+
+    // Clean up resources from previous session
+    private fun cleanUp() {
+        leaderboard.clear() // Reset leaderboard
+        numDisplayItems = DEFAULT_DISPLAY_NUM // Reset number of displayed items to default
+        userRank = -1
     }
 }

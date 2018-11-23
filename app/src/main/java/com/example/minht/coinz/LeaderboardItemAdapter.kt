@@ -1,6 +1,8 @@
 package com.example.minht.coinz
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -42,9 +44,18 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         val usernameTextView = holder.usernameTextView
         val scoreTextView = holder.scoreTextView
         val leaderboardItem = getItem(pos) as LeaderboardItem
-        rankTextView.text = leaderboardItem.rank.toString()
         usernameTextView.text = leaderboardItem.username
+        rankTextView.text = leaderboardItem.rank.toString()
         scoreTextView.text = String.format("%.2f",leaderboardItem.score)
+        // Bold text and special background if it's user
+        if (leaderboardItem.isUser) {
+            rankTextView.setTypeface(null,Typeface.BOLD)
+            rankTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+            usernameTextView.setTypeface(null,Typeface.BOLD)
+            usernameTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+            scoreTextView.setTypeface(null,Typeface.BOLD)
+            scoreTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+        }
         return view
     }
 
