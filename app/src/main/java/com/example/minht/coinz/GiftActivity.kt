@@ -14,6 +14,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.util.*
 
 class GiftActivity : AppCompatActivity() {
 
@@ -68,7 +69,19 @@ class GiftActivity : AppCompatActivity() {
     private fun openGift(gift: Gift) {
         val coins = gift.contents
         giftList.remove(gift)
-        walletList.addAll(coins)
+        // Make new unique ids for any duplicate coins
+        for (coin in coins) {
+            if (walletList.contains(coin)) {
+                var isUnique = false
+                while (!isUnique) {
+                    val uniqueId = UUID.randomUUID().toString()
+                    coin.id = uniqueId
+                    isUnique = !walletList.contains(coin) // Check that new id is indeed indeed
+                }
+            }
+            walletList.add(coin)
+        }
+        //walletList.addAll(coins)
         // Update screen
         generateSummary()
         giftAdapter = GiftAdapter(this,giftList)
@@ -93,26 +106,6 @@ class GiftActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         loadData()
-//        // BEGIN TEST
-//        val testCoin1 = Coin("aa","PENY", 2.718281, false)
-//        val testCoin2 = Coin("bb", "QUID", 3.141592, false)
-//        val testGift1Contents = ArrayList<Coin>()
-//        testGift1Contents.add(testCoin1)
-//        testGift1Contents.add(testCoin2)
-//        val testGift1 = Gift("2018/11/16", "DummyGuy", testGift1Contents)
-//
-//        val testCoin3 = Coin("cc","SHIL", 4.214315, false)
-//        val testCoin4 = Coin("dd", "SHIL", 9.821423, false)
-//        val testCoin5 = Coin("ee", "DOLR", 0.122142, false)
-//        val testGift2Contents = ArrayList<Coin>()
-//        testGift2Contents.add(testCoin3)
-//        testGift2Contents.add(testCoin4)
-//        testGift2Contents.add(testCoin5)
-//        val testGift2 = Gift("2018/11/19", "AnotherDummyGuy", testGift2Contents)
-//
-//        giftList.add(testGift1)
-//        giftList.add(testGift2)
-        // END TEST
     }
 
     private fun loadData() {
@@ -126,12 +119,12 @@ class GiftActivity : AppCompatActivity() {
                 var dataString = task.result!!.get(WALLET_KEY).toString()
                 var type = object : TypeToken<ArrayList<Coin>>() {}.type
                 walletList = gson.fromJson(dataString, type)
-                Log.d(TAG, "[loadData] Restored wallet")
+                Log.d(TAG, "[loadData] Restored wallet as $dataString")
                 // Load gifts
                 dataString = task.result!!.get(GIFTS_KEY).toString()
                 type = object : TypeToken<ArrayList<Gift>>() {}.type
                 giftList = gson.fromJson(dataString, type)
-                Log.d(TAG, "[loadData] Restored gifts")
+                Log.d(TAG, "[loadData] Restored gifts as $dataString")
                 generateSummary()
                 giftAdapter = GiftAdapter(this,giftList)
                 giftListView.adapter=giftAdapter

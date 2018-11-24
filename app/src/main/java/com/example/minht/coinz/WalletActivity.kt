@@ -37,13 +37,14 @@ class WalletActivity : AppCompatActivity() {
 
     //private var closeDialog = false
     // Banking variables
-    // How many coins selected per day and exchange rates for all currencies
+    // How many coins deposited today and exchange rates for all currencies
     private lateinit var bankAccount : BankAccount
     private var numberCoinsBanked = 0
     private var penyRate : Double = 0.0
     private var dolrRate : Double = 0.0
     private var quidRate : Double = 0.0
     private var shilRate : Double = 0.0
+    private var userScore = 0.0
 
     // Other general variables
     private lateinit var mAuth: FirebaseAuth
@@ -59,6 +60,7 @@ class WalletActivity : AppCompatActivity() {
         const val WALLET_KEY = "Wallet"
         const val GIFTS_KEY = "Gifts"
         const val BANK_ACCOUNT_KEY = "Bank"
+        const val SCORE_KEY = "Score"
         const val MAX_GIFTS = 2 // Maximum number of unopened gifts one can have
     }
 
@@ -271,6 +273,8 @@ class WalletActivity : AppCompatActivity() {
         }
         val depositDesc = "Deposited $numPenySelected PENY, $numDolrSelected DOLR, $numQuidSelected QUID and $numShilSelected SHIL"
         val newBalance = bankAccount.balance + amount
+        userScore += amount
+        Log.d(TAG,"[makeDeposit] New score is $userScore")
         val bankTransfer =  BankTransfer(getCurrentDate(),depositDesc,amount,newBalance)
         bankAccount.balance = newBalance
         bankAccount.bankTransfers.add(bankTransfer)
@@ -320,6 +324,9 @@ class WalletActivity : AppCompatActivity() {
                 dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
                 Log.d(TAG, "[loadData] Loaded bank account as $dataString")
                 bankAccount = gson.fromJson(dataString,BankAccount::class.java)
+                // Load user score
+                userScore = task.result!!.getDouble(SCORE_KEY)!!
+                Log.d(TAG,"[loadData] Loaded user score as: $userScore")
             }
             else {
                 Log.d(TAG, "[loadData] Failed to load data")
@@ -337,6 +344,8 @@ class WalletActivity : AppCompatActivity() {
         dataString = gson.toJson(bankAccount)
         db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(BANK_ACCOUNT_KEY,dataString)
         Log.d(TAG, "[onStop] Stored bank account as $dataString")
+        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(SCORE_KEY,userScore)
+        Log.d(TAG, "[saveData] Stored user score as $userScore")
     }
 
     // Generate summary before list of coins

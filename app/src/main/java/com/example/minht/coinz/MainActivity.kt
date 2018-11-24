@@ -62,9 +62,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Coin collection mechanism variables
-    private var numDayCollectedCoins = 0 // Number of coins collected on the current day
-    private var markerList = HashMap<String,Marker>() // Hashmap of markers shown in the map
-    private var visitedMarkerIdList : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
+    private var numCollectedCoins = 0 // Number of coins collected on the current day
+    private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
+    private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
     private var receivedDailyBonus = false // Whether player received daily bonus already
 
@@ -103,6 +103,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val WALLET_KEY = "Wallet"
         const val BANK_ACCOUNT_KEY = "Bank"
         const val SCORE_KEY = "Score"
+        const val VISITED_MARKERS_KEY = "Visited markers"
+        const val NUM_COINS_KEY = "Number of collected coins"
+        // Keys for Shared Preferences
+        const val DOWNLOAD_DATE_KEY = "lastDownloadDate" // Date of map downloaded last
+        const val MAP_KEY = "lastCoinMap" // Latest coin map
         // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
         const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected on per day
@@ -187,15 +192,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 //                bankAccount = ArrayList()
 
                 // Already played today, render markers directly
-                Log.d(TAG,"[onMapReady] Already played today, rendering markers directly")
+                Log.d(TAG,"[onMapReady] Map has already been downloaded today, rendering markers directly")
                 renderJson(map,mapJson)
             } else {
                 // First time playing today
                 // Reset values and download coin map
-                Log.d(TAG,"[onMapReady] First time playing today, reset values and download map from server")
-                downloadDate = currDate
-                numDayCollectedCoins = 0
-                visitedMarkerIdList = mutableSetOf()
+                Log.d(TAG,"[onMapReady] First time this map was used today, download map from server")
+//                downloadDate = currDate
+//                numDayCollectedCoins = 0
+//                visitedMarkerIdList = mutableSetOf()
                 val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currDate/coinzmap.geojson"
                 Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
                 val downloadFileTask = DownloadFileTask(this)
@@ -214,7 +219,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val coin = coins.getJSONObject(i)
                 val coinProps = coin.getJSONObject("properties")
                 val coinId = coinProps.getString("id")
-                if (visitedMarkerIdList.contains(coinId)) {
+                if (visitedMarkerSet.contains(coinId)) {
                     Log.d(TAG,"[renderJson] Marker already visited today, not rendering it")
                     continue
                 }
@@ -337,7 +342,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // If user is sufficiently close to any coin (at least 25m), remove it from the map
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
-            Log.d(TAG, "[onLocationChanged] location is null")
+            Log.d(TAG, "[onLocationChanged] Location is null")
         // No need to check distances if wallet is full
         } else if (walletList.size == MAX_COINS_LIMIT) {
             return
@@ -355,10 +360,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
                     map!!.removeMarker(marker)
                     Log.d(TAG, "[onLocationChanged] Coin ${marker.snippet} with value ${marker.title} removed from map")
-                    visitedMarkerIdList.add(markerId)
+                    visitedMarkerSet.add(markerId)
                     val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false)
+                    // If user already contains coin with same id, create a new unique id for it
+                    // Repeat until id is unique (rarely if ever, there will be a need for another iteration)
+                    // Coins "same" from user's perspective (same currency and value), but internally different
+                    // Important for actions with coins (transfer/deposit)
+                    if (walletList.contains(coin)) {
+                        var isUnique = false
+                        while (!isUnique) {
+                            val uniqueId = UUID.randomUUID().toString()
+                            coin.id = uniqueId
+                            isUnique = !walletList.contains(coin) // Check that new id is indeed indeed
+                        }
+                    }
                     walletList.add(coin)
-                    numDayCollectedCoins++
+                    numCollectedCoins++
                     mapIt.remove()
                     Log.d(TAG, "[onLocationChanged] Coin ${marker.snippet} with value ${marker.title} collected and added to wallet")
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected and added to wallet", Toast.LENGTH_SHORT).show()
@@ -367,9 +384,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         Toast.makeText(this,"Can't collect coins, clean up your wallet!", Toast.LENGTH_SHORT).show()
                     }
                 }
-                if (numDayCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
+                if (numCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
                     bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100))
-                    bankAccount!!.balance += 100.00
+                    bankAccount!!.balance += 100.0
+                    userScore += 100.0
                     Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
                     Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
                     receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
@@ -415,24 +433,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             } catch (ignored: SecurityException) {}
             locationEngine!!.addLocationEngineListener(this)
         }
-        // Restore preferences
+        // Restore data from Shared Preferences
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         // Recall map variables
-        downloadDate = settings.getString("lastDownloadDate", "")
-        mapString = settings.getString("lastCoinMap","")
+        downloadDate = settings.getString(DOWNLOAD_DATE_KEY, "")
+        mapString = settings.getString(MAP_KEY,"")
         if (mapString == "") {
             mapJson = JSONObject()
         }
         else {
             mapJson = JSONObject(mapString)
         }
-
-        numDayCollectedCoins = settings.getInt("numDayCollectCoins",0)
-        visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
+//        numDayCollectedCoins = settings.getInt("numDayCollectCoins",0)
+//        visitedMarkerIdList = settings.getStringSet("visitedMarkers", mutableSetOf())
         Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-        Log.d(TAG, "[onStart] Recalled number of collected coins is $numDayCollectedCoins")
-        Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerIdList.size}\")")
+        Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectedCoins")
+        Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerSet.size}\")")
         // Recall exchange rates
         penyRate = settings.getString("penyRate","0.0").toDouble()
         dolrRate = settings.getString("dolrRate","0.0").toDouble()
@@ -466,15 +483,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mapString = mapJson.toString()
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         val editor = settings.edit()
-        // Store map values in Shared Preferences
-        editor.putString("lastDownloadDate", downloadDate)
-        editor.putString("lastCoinMap",mapString)
-        editor.putInt("numDayCollectCoins", 0)
-        editor.putStringSet("visitedMarkers", visitedMarkerIdList)
+        // Store map downloading values in Shared Preferences
+        editor.putString(DOWNLOAD_DATE_KEY, downloadDate)
+        editor.putString(MAP_KEY,mapString)
+//        editor.putInt("numDayCollectCoins", 0)
+//        editor.putStringSet("visitedMarkers", visitedMarkerIdList)
         Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
         Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
-        Log.d(TAG, "[onStop] Stored number of collected coins as $numDayCollectedCoins")
-        Log.d(TAG, "[onStop] Stored number of visited markers today as ${visitedMarkerIdList.size}")
+        Log.d(TAG, "[onStop] Stored number of collected coins as $numCollectedCoins")
+        Log.d(TAG, "[onStop] Stored number of visited markers today as ${visitedMarkerSet.size}")
         // Store exchange rates in Shared Preferences
         editor.putString("penyRate", penyRate.toString())
         editor.putString("dolrRate", dolrRate.toString())
@@ -489,14 +506,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Store user data in Firestore
     private fun saveData() {
-        // Save wallet
         val gson = Gson()
-        var json = gson.toJson(walletList)
-        db.collection(COLLECTION_KEY).document(uid).update(WALLET_KEY,json)
-        Log.d(TAG, "[saveData] Stored wallet as $json")
-        json = gson.toJson(bankAccount)
-        db.collection(COLLECTION_KEY).document(uid).update(BANK_ACCOUNT_KEY,json)
-        Log.d(TAG, "[saveData] Stored bank account as $json")
+        val userDoc = db.collection(COLLECTION_KEY).document(uid)
+        // Save set of today's visited markers
+        var dataString = gson.toJson(visitedMarkerSet)
+        userDoc.update(VISITED_MARKERS_KEY,dataString)
+        Log.d(TAG,"[saveData] Stored today's list of visited markers as $dataString")
+        // Save number of today's number of collected coins
+        userDoc.update(NUM_COINS_KEY,numCollectedCoins)
+        Log.d(TAG, "[saveData] Stored today's number of collected as $numCollectedCoins")
+        // Save wallet
+        dataString = gson.toJson(walletList)
+        userDoc.update(WALLET_KEY,dataString)
+        Log.d(TAG, "[saveData] Stored wallet as $dataString")
+        // Save bank account
+        dataString = gson.toJson(bankAccount)
+        userDoc.update(BANK_ACCOUNT_KEY,dataString)
+        Log.d(TAG, "[saveData] Stored bank account as $dataString")
+        // Save score
+        userDoc.update(SCORE_KEY,userScore)
+        Log.d(TAG, "[saveData] Stored user score as $userScore")
     }
 
     // Load user data from Firestore
@@ -507,10 +536,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             if (task.isSuccessful) {
                 val taskResult = task.result
                 if (taskResult!!.exists()) {
+                    // Load set of visited markers
+                    var dataString = taskResult.getString(VISITED_MARKERS_KEY)
+                    Log.d(TAG,"[loadData] Loaded set of visited markers as: $dataString")
+                    var type = object : TypeToken<MutableSet<String>>(){}.type
+                    visitedMarkerSet = gson.fromJson(dataString,type)
+                    // Load number of collected coins
+                    numCollectedCoins = taskResult.getLong(NUM_COINS_KEY)!!.toInt()
+                    Log.d(TAG,"[loadData] Loaded number of collected coins as $numCollectedCoins")
                     // Load wallet
-                    var dataString = taskResult.getString(WALLET_KEY)
+                    dataString = taskResult.getString(WALLET_KEY)
                     Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
-                    val type = object : TypeToken<ArrayList<Coin>>(){}.type
+                    type = object : TypeToken<ArrayList<Coin>>(){}.type
                     walletList = gson.fromJson(dataString, type)
                     // Load bank account
                     dataString = taskResult.getString(BANK_ACCOUNT_KEY)
@@ -518,6 +555,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     bankAccount = gson.fromJson(dataString, BankAccount::class.java)
                     // Load score
                     userScore = taskResult.getDouble(SCORE_KEY)!!
+                    Log.d(TAG,"[loadData] Loaded user score as: $userScore")
                 }
                 else {
                     Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
@@ -554,8 +592,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             Log.d(TAG, "[downloadComplete] Successfully extracted map")
             // Reset daily values
             downloadDate = getCurrentDate()
-            numDayCollectedCoins = 0
-            visitedMarkerIdList = mutableSetOf()
+            numCollectedCoins = 0
+            visitedMarkerSet = mutableSetOf()
             // Render markers after download was completed
             renderJson(map, mapJson)
             updateExchangeRates(mapJson)
@@ -564,6 +602,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             Log.d(TAG, "[downloadComplete] Couldn't extract map")
         }
     }
+
+
+
 
     // Open Navigation drawer when menu item clicked
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -624,7 +665,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 leaderboardIntent.putExtra(USERNAME_KEY,userName)
                 leaderboardIntent.putExtra(SCORE_KEY,userScore)
                 startActivity(leaderboardIntent)
-                //startActivity(Intent(this, LeaderboardActivity::class.java))
             }
         }
         return true
