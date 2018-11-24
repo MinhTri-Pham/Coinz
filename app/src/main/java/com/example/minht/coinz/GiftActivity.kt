@@ -81,7 +81,6 @@ class GiftActivity : AppCompatActivity() {
             }
             walletList.add(coin)
         }
-        //walletList.addAll(coins)
         // Update screen
         generateSummary()
         giftAdapter = GiftAdapter(this,giftList)

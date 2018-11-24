@@ -37,6 +37,9 @@ class RegisterActivity : AppCompatActivity() {
         const val BANK_KEY = "Bank"
         const val GIFTS_KEY = "Gifts"
         const val SCORE_KEY = "Score"
+        const val LAST_PLAY_DATE_KEY = "Last play date"
+        const val VISITED_MARKERS_KEY = "Visited markers"
+        const val NUM_COINS_KEY = "Number of collected coins"
         // For holding user count in SharedPreferences
         const val PREFS_FILE = "MyPrefsFile"
         const val NUM_PLAYERS_KEY = "numPlayers"
@@ -87,16 +90,20 @@ class RegisterActivity : AppCompatActivity() {
                                 val user : HashMap<String, Any> = HashMap()
                                 user[USERNAME_KEY] = username
                                 user[EMAIL_KEY] = email
-                                // Create empty wallet and bank account for user
+                                // Initialise values for user document
                                 val emptyWallet = ArrayList<Coin>()
                                 val emptyBankTransfers = ArrayList<BankTransfer>()
                                 val emptyGifts = ArrayList<Gift>()
                                 val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
+                                val emptyVisitedSet = mutableSetOf<String>()
                                 val gson = Gson()
                                 user[WALLET_KEY] = gson.toJson(emptyWallet)
                                 user[BANK_KEY] = gson.toJson(emptyBankAccount)
                                 user[GIFTS_KEY] = gson.toJson(emptyGifts)
                                 user[SCORE_KEY] = 0
+                                user[LAST_PLAY_DATE_KEY] = ""
+                                user[VISITED_MARKERS_KEY] = emptyVisitedSet
+                                user[NUM_COINS_KEY] = 0
                                 db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
                                     Log.d(TAG,"[registerUser] Created new user")
                                     Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
