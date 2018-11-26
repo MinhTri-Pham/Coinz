@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
     private lateinit var mDrawerLayout : DrawerLayout
-    private lateinit var originLocation: Location
+    private var originLocation : Location? = null
     private lateinit var permissionsManager: PermissionsManager
     private var locationEngine : LocationEngine? = null
     private lateinit var locationLayerPlugin: LocationLayerPlugin
@@ -65,7 +65,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
     private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
-    private var receivedDailyBonus = false // Whether player received daily bonus already
 
     // Map downloading
     private var downloadDate = "" // Format: YYYY/MM/DD
@@ -90,6 +89,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var userName = ""
     private var userScore = 0.0
     private var userLastPlay = ""
+    private var userDist = 0.0
+    private var userCals = 0.0
+    private var userMapsCompleted = 0
+    private var receivedDailyBonus = false // Whether player received daily bonus already
 
     // Constants
     companion object {
@@ -105,12 +108,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val LAST_PLAY_DATE_KEY = "Last play date"
         const val VISITED_MARKERS_KEY = "Visited markers"
         const val NUM_COINS_KEY = "Number of collected coins"
+        const val DIST_KEY = "Distance walked"
+        const val CAL_KEY = "Calories burned"
+        const val NUM_MAP_KEY = "Number of completed maps"
         // Keys for Shared Preferences
         const val DOWNLOAD_DATE_KEY = "lastDownloadDate" // Date of map downloaded last
         const val MAP_KEY = "lastCoinMap" // Latest coin map
         // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected on per day
+        const val MAX_DAILY_COINS = 5 // Maximum number of coins that can be collected per day
         const val MAX_COINS_LIMIT = 15 // Maximum number of coins that can be in the wallet at any time
     }
 
@@ -195,9 +201,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         }
                         // Otherwise, reset daily variables and update last play date to today
                         else {
+                            Log.d(TAG,"[onMapReady] First time playing today, resetting values")
                             visitedMarkerSet = mutableSetOf()
                             numCollectedCoins = 0
                             userDocRef.update(LAST_PLAY_DATE_KEY, currDate)
+                            userDocRef.update(VISITED_MARKERS_KEY, gson.toJson(visitedMarkerSet))
+                            userDocRef.update(NUM_COINS_KEY,numCollectedCoins)
                         }
                         // Download map if necessary
                         if (currDate == downloadDate) {
@@ -207,6 +216,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         } else {
                             // First time today's map is used, need to download it
                             Log.d(TAG,"[onMapReady] First time this map was used today, download map from server")
+                            downloadDate = currDate
                             val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$currDate/coinzmap.geojson"
                             Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
                             val downloadFileTask = DownloadFileTask(this)
@@ -365,19 +375,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
             Log.d(TAG, "[onLocationChanged] Location is null")
-        // No need to check distances if wallet is full
-        } else if (walletList.size == MAX_COINS_LIMIT) {
-            return
         } else {
+            if (originLocation != null) {
+                val distanceUser = originLocation!!.distanceTo(location)
+                userDist += distanceUser
+                userCals += distanceUser / 1000 * 65 // Only estimate 70 cal/km
+            }
             originLocation = location
-            setCameraPosition(originLocation)
+            setCameraPosition(originLocation!!)
+            Log.d(TAG,"[onLocationChanged] Distance walked: $userDist")
+            Log.d(TAG,"[onLocationChanged] Calories burned: $userCals")
+            if (walletList.size == MAX_COINS_LIMIT)
+                return
             // Compute distance to markers to each marker, checking if any is sufficiently close
             val mapIt = markerList.entries.iterator()
             while (mapIt.hasNext()) {
                 val pair = mapIt.next()
                 val markerId = pair.key
                 val marker = pair.value
-                val distToMarker = distanceToMarker(originLocation,marker)
+                val distToMarker = distanceToMarker(originLocation!!,marker)
                 // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
                     map!!.removeMarker(marker)
@@ -411,6 +427,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     userScore += 100.0
                     Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
                     Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
+                    userMapsCompleted++;
                     receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
                 }
             }
@@ -507,8 +524,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString(MAP_KEY,mapString)
         Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
         Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
-        Log.d(TAG, "[onStop] Stored number of collected coins as $numCollectedCoins")
-        Log.d(TAG, "[onStop] Stored number of visited markers today as ${visitedMarkerSet.size}")
         // Store exchange rates in Shared Preferences
         editor.putString("penyRate", penyRate.toString())
         editor.putString("dolrRate", dolrRate.toString())
@@ -543,9 +558,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         // Save score
         userDoc.update(SCORE_KEY,userScore)
         Log.d(TAG, "[saveData] Stored user score as $userScore")
+        // Save distance walked
+        userDoc.update(DIST_KEY, userDist)
+        Log.d(TAG, "[saveData] Stored user distance walked as $userDist")
+        // Save calories burned
+        userDoc.update(CAL_KEY, userCals)
+        Log.d(TAG, "[saveData] Stored user distance walked as $userDist")
+        // Save calories burned
+        userDoc.update(NUM_MAP_KEY, userMapsCompleted)
+        Log.d(TAG, "[saveData] Stored user distance walked as $userCals")
     }
 
-    // Load user data from Firestore
+    // Load persistent user data from Firestore
+    // I.e. those that aren't updated daily, these are handled in onMapReady
     private fun loadData() {
         val gson = Gson()
         val userDocRef = db.collection(COLLECTION_KEY).document(uid)
@@ -564,7 +589,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     bankAccount = gson.fromJson(dataString, BankAccount::class.java)
                     // Load score
                     userScore = taskResult.getDouble(SCORE_KEY)!!
-                    Log.d(TAG,"[loadData] Loaded user score as: $userScore")
+                    Log.d(TAG,"[loadData] Loaded score as: $userScore")
+                    // Load distance walked
+                    userDist = taskResult.getDouble(DIST_KEY)!!
+                    Log.d(TAG,"[loadData] Loaded distance walked as: $userDist")
+                    // Load calories burned
+                    userCals = taskResult.getDouble(CAL_KEY)!!
+                    Log.d(TAG,"[loadData] Loaded user score as: $userCals")
+                    // Load number of maps completed
+                    userMapsCompleted = taskResult.getLong(NUM_MAP_KEY)!!.toInt()
+                    Log.d(TAG,"[loadData] Loaded user score as: $userMapsCompleted")
                 }
                 else {
                     Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
@@ -667,6 +701,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 leaderboardIntent.putExtra(USERNAME_KEY,userName)
                 leaderboardIntent.putExtra(SCORE_KEY,userScore)
                 startActivity(leaderboardIntent)
+            }
+            R.id.stats -> {
+                saveData()
+                val statsIntent = Intent(this, StatsActivity::class.java)
+                statsIntent.putExtra(DIST_KEY, userDist)
+                statsIntent.putExtra(CAL_KEY, userCals)
+                statsIntent.putExtra(NUM_MAP_KEY, userMapsCompleted)
+                startActivity(statsIntent)
             }
         }
         return true

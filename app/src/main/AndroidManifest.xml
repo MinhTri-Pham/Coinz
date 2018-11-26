@@ -17,8 +17,7 @@
         <activity
             android:name=".MainActivity"
             android:label="Coinz"
-            android:theme="@style/AppTheme.NoActionBar">
-        </activity>
+            android:theme="@style/AppTheme.NoActionBar"></activity>
         <activity
             android:name=".LoginActivity"
             android:label="Coinz">
@@ -32,28 +31,24 @@
         </activity>
         <activity
             android:name=".RegisterActivity"
-            android:label="Register">
-        </activity>
+            android:label="Register"></activity>
         <activity
             android:name=".WalletActivity"
             android:label="Wallet"
-            android:parentActivityName=".MainActivity">
-        </activity>
+            android:parentActivityName=".MainActivity"></activity>
         <activity
             android:name=".BankActivity"
             android:label="Bank Account"
-            android:parentActivityName=".MainActivity">
-        </activity>
+            android:parentActivityName=".MainActivity"></activity>
         <activity
             android:name=".GiftActivity"
             android:label="Gifts"
-            android:parentActivityName=".MainActivity">
-        </activity>
+            android:parentActivityName=".MainActivity"></activity>
         <activity
             android:name=".LeaderboardActivity"
             android:label="Leaderboard"
-            android:parentActivityName=".MainActivity">
-        </activity>
+            android:parentActivityName=".MainActivity"></activity>
+        <activity android:name=".StatsActivity"></activity>
     </application>
 
 </manifest>
