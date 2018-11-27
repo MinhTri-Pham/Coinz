@@ -46,7 +46,8 @@ class GiftActivity : AppCompatActivity() {
             val selectedGift = giftList[pos]
             // If no space in wallet, warn user
             if (walletList.size > MAX_COINS_LIMIT - selectedGift.contents.size) {
-                Toast.makeText(this, "Don't have enough space in your wallet!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Don't have enough space in your wallet! Clean up your wallet.",
+                        Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "[onCreate] Can't open gift, since there's not enough space in the wallet")
             }
             else {

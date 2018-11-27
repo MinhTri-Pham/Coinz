@@ -25,7 +25,7 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
         return "$date: $from sent you ${contents.size} coins!"
     }
 
-    // Build newline separated message showing currency and value (i.e. toString of coin class)
+    // Build newline separated message showing currency and value of each coin in the gift
     fun showContents(): String{
         val builder = StringBuilder()
         for (coin in contents) {

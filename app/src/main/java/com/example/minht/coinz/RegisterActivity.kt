@@ -40,6 +40,10 @@ class RegisterActivity : AppCompatActivity() {
         const val LAST_PLAY_DATE_KEY = "Last play date"
         const val VISITED_MARKERS_KEY = "Visited markers"
         const val NUM_COINS_KEY = "Number of collected coins"
+        const val NUM_DEPOSIT_KEY = "Number of deposited coins"
+        const val DIST_KEY = "Distance walked"
+        const val CAL_KEY = "Calories burned"
+        const val NUM_MAP_KEY = "Number of completed maps"
         // For holding user count in SharedPreferences
         const val PREFS_FILE = "MyPrefsFile"
         const val NUM_PLAYERS_KEY = "numPlayers"
@@ -101,9 +105,13 @@ class RegisterActivity : AppCompatActivity() {
                                 user[BANK_KEY] = gson.toJson(emptyBankAccount)
                                 user[GIFTS_KEY] = gson.toJson(emptyGifts)
                                 user[SCORE_KEY] = 0
+                                user[DIST_KEY] = 0
+                                user[CAL_KEY] = 0
+                                user[NUM_MAP_KEY] = 0
                                 user[LAST_PLAY_DATE_KEY] = ""
                                 user[VISITED_MARKERS_KEY] = emptyVisitedSet
                                 user[NUM_COINS_KEY] = 0
+                                user[NUM_DEPOSIT_KEY] = 0
                                 db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
                                     Log.d(TAG,"[registerUser] Created new user")
                                     Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()

@@ -25,6 +25,7 @@ class WalletActivity : AppCompatActivity() {
     // Screen components
     private lateinit var walletAdapter : WalletAdapter
     private lateinit var walletStateTextView : TextView
+    private lateinit var depositStateTextView : TextView
     private lateinit var coinListView : ListView
     private lateinit var transferButton: Button
     private lateinit var depositButton: Button
@@ -35,11 +36,10 @@ class WalletActivity : AppCompatActivity() {
     // Which coins were selected for further action
     private var selectedCoinList : ArrayList<Coin> = ArrayList()
 
-    //private var closeDialog = false
     // Banking variables
     // How many coins deposited today and exchange rates for all currencies
     private lateinit var bankAccount : BankAccount
-    private var numberCoinsBanked = 0
+    private var numCoinsDeposited = 0
     private var penyRate : Double = 0.0
     private var dolrRate : Double = 0.0
     private var quidRate : Double = 0.0
@@ -60,8 +60,12 @@ class WalletActivity : AppCompatActivity() {
         const val WALLET_KEY = "Wallet"
         const val GIFTS_KEY = "Gifts"
         const val BANK_ACCOUNT_KEY = "Bank"
+        const val NUM_DEPOSIT_KEY = "Number of deposited coins"
         const val SCORE_KEY = "Score"
-        const val MAX_GIFTS = 2 // Maximum number of unopened gifts one can have
+        // Other constants
+        const val MAX_COINS_LIMIT = 500 // Maximum number of coins that can be in the wallet at any time
+        const val MAX_DEPOSIT = 3 // Maximum number of coins deposited per day
+        const val MAX_GIFTS = 10 // Maximum number of unopened gifts one can have
     }
 
     @SuppressLint("InflateParams")
@@ -73,6 +77,7 @@ class WalletActivity : AppCompatActivity() {
         db = FirebaseFirestore.getInstance()
         gson = Gson()
         walletStateTextView = findViewById(R.id.wallet_state)
+        depositStateTextView = findViewById(R.id.deposit_state)
         coinListView = findViewById(R.id.coins_checkable_list)
         transferButton = findViewById(R.id.transfer_coins_button)
         // Send selected coins to someone
@@ -110,26 +115,39 @@ class WalletActivity : AppCompatActivity() {
         // Deposit selected coins
         depositButton = findViewById(R.id.deposit_coins_button)
         depositButton.setOnClickListener{ _ ->
-            // Check daily banking limit
-            if (numberCoinsBanked < 25) {
-                getSelectedCoins()
-                // Check if any coins were selected
-                if (selectedCoinList.size != 0) {
+            getSelectedCoins()
+            // Check if any coins were selected
+            if (selectedCoinList.size != 0) {
+                // Check daily bank limit
+                if (numCoinsDeposited >= MAX_DEPOSIT) {
+                    Toast.makeText(this,"Already deposited $MAX_DEPOSIT coins today, try again tomorrow!", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[onCreate] Reached daily deposit limit")
+                }
+                else if (numCoinsDeposited + selectedCoinList.size > MAX_DEPOSIT) {
+                    val remainder = MAX_DEPOSIT - numCoinsDeposited
+                    if (remainder != 1) {
+                        Toast.makeText(this,"Can only deposit $remainder more coins today!", Toast.LENGTH_SHORT).show()
+                        Log.d(TAG,"[onCreate] Only 1 coin to deposit")
+                    }
+                    else {
+                        Toast.makeText(this,"Can only deposit $remainder more coins today!", Toast.LENGTH_SHORT).show()
+                        Log.d(TAG,"[onCreate] Only $remainder coins to deposit")
+                    }
+                }
+                else {
+                    Log.d(TAG,"[onCreate] Can deposit selected coins")
                     makeDeposit()
                     coinList.removeAll(selectedCoinList)
                     // Save new data for user
                     saveData()
+                    selectedCoinList.clear()
                     // Update screen
                     updateScreen()
                 }
-                else {
-                    Toast.makeText(this, "Select some coins to deposit!", Toast.LENGTH_SHORT).show()
-                    Log.d(TAG,"[onCreate] No coins selected for deposit")
-                }
             }
             else {
-                Toast.makeText(this,"Already banked 25 coins today, try again tomorrow!", Toast.LENGTH_SHORT).show()
-                Log.d(TAG,"[onCreate] Reached banking limit")
+                Toast.makeText(this, "Select some coins to deposit!", Toast.LENGTH_SHORT).show()
+                Log.d(TAG,"[onCreate] No coins selected for deposit")
             }
         }
         // Check all coins
@@ -145,6 +163,7 @@ class WalletActivity : AppCompatActivity() {
 
     // Extract which coins were selected
     private fun getSelectedCoins() {
+        selectedCoinList.clear() // Reset from previous
         for (coin in coinList) {
             if (coin.selected) {
                 selectedCoinList.add(coin)
@@ -204,6 +223,7 @@ class WalletActivity : AppCompatActivity() {
                                     usersRef.document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
                                     Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
                                     dialog.dismiss() // Close prompt dialog
+                                    selectedCoinList.clear()
                                     updateScreen() // Refresh screen
                                 }
                                 else {
@@ -240,45 +260,46 @@ class WalletActivity : AppCompatActivity() {
 
     // Deposit selected coins to bank account
     private fun makeDeposit() {
-        var amount = 0.0
-        // Counts per currency selected
-        var numPenySelected = 0
-        var numDolrSelected = 0
-        var numQuidSelected = 0
-        var numShilSelected = 0
+        var numCoins = 0 // Number of coins deposited
+        var amount = 0.0 // Deposit amount
+        val contents : ArrayList<Coin> = ArrayList()
         for (coin in selectedCoinList) {
+            contents.add(coin)
+            numCoins++
             val currency = coin.currency
             val value = coin.valueInGold
-            // Compute how many coins for each currency were computed
             // Compute deposit amount using coin values and exchange rates
             when(currency) {
                 "PENY" -> {
-                    numPenySelected++
                     amount += penyRate*value
                 }
                 "DOLR" -> {
-                    numDolrSelected++
                     amount += dolrRate*value
                 }
                 "QUID" -> {
-                    numQuidSelected++
                     amount += quidRate*value
                 }
                 "SHIL" -> {
-                    numShilSelected++
                     amount += shilRate*value
                 }
                 else -> Log.d(TAG, "[makeSelectedCoinList] Invalid currency encountered")
             }
         }
-        val depositDesc = "Deposited $numPenySelected PENY, $numDolrSelected DOLR, $numQuidSelected QUID and $numShilSelected SHIL"
+        val depositDesc : String
+        if (numCoins != 1) {
+            depositDesc = "Deposited $numCoins coins"
+        }
+        else {
+            depositDesc = "Deposited $numCoins coin"
+        }
+        numCoinsDeposited += numCoins
         val newBalance = bankAccount.balance + amount
         userScore += amount
         Log.d(TAG,"[makeDeposit] New score is $userScore")
-        val bankTransfer =  BankTransfer(getCurrentDate(),depositDesc,amount,newBalance)
+        val bankTransfer =  BankTransfer(getCurrentDate(),depositDesc,amount,newBalance,contents,true)
         bankAccount.balance = newBalance
         bankAccount.bankTransfers.add(bankTransfer)
-        Log.d(TAG, "[makeDeposit] Deposit made\n" + bankTransfer.toString())
+        Log.d(TAG, "[makeDeposit] Deposit made\n" + bankTransfer.showDetails())
     }
 
     // Update screen after action performed (deposit or transfer)
@@ -286,7 +307,6 @@ class WalletActivity : AppCompatActivity() {
         generateSummary()
         walletAdapter = WalletAdapter(this, coinList)
         coinListView.adapter = walletAdapter
-        selectedCoinList.clear()
     }
 
     // Returns today's date in format YYYY/MM/DD
@@ -319,14 +339,17 @@ class WalletActivity : AppCompatActivity() {
                     walletAdapter = WalletAdapter(this, coinList)
                     coinListView.adapter = walletAdapter
                 }
-                generateSummary()
                 // Load bank account
                 dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
                 Log.d(TAG, "[loadData] Loaded bank account as $dataString")
                 bankAccount = gson.fromJson(dataString,BankAccount::class.java)
-                // Load user score
+                // Load number of deposited coins today
+                numCoinsDeposited = task.result!!.getLong(NUM_DEPOSIT_KEY)!!.toInt()
+                Log.d(TAG,"[loadData] Loaded number of deposited coins as $numCoinsDeposited")
+                // Load score
                 userScore = task.result!!.getDouble(SCORE_KEY)!!
-                Log.d(TAG,"[loadData] Loaded user score as: $userScore")
+                Log.d(TAG,"[loadData] Loaded score as $userScore")
+                generateSummary()
             }
             else {
                 Log.d(TAG, "[loadData] Failed to load data")
@@ -339,26 +362,33 @@ class WalletActivity : AppCompatActivity() {
     private fun saveData() {
         // Update user's wallet and bank account
         var dataString = gson.toJson(coinList)
-        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(WALLET_KEY,dataString)
+        val userRef =  db.collection(COLLECTION_KEY).document(mAuth.uid!!)
+        userRef.update(WALLET_KEY,dataString)
         Log.d(TAG, "[onStop] Stored wallet as $dataString")
         dataString = gson.toJson(bankAccount)
-        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(BANK_ACCOUNT_KEY,dataString)
+        userRef.update(BANK_ACCOUNT_KEY,dataString)
         Log.d(TAG, "[onStop] Stored bank account as $dataString")
-        db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(SCORE_KEY,userScore)
-        Log.d(TAG, "[saveData] Stored user score as $userScore")
+        userRef.update(NUM_DEPOSIT_KEY,numCoinsDeposited)
+        Log.d(TAG, "[saveData] Stored number of deposited coins as $numCoinsDeposited")
+        userRef.update(SCORE_KEY,userScore)
+        Log.d(TAG, "[saveData] Stored score as $userScore")
     }
 
-    // Generate summary before list of coins
+    // Summary of how many coins in wallet and number of coins deposited today before list of coins
     private fun generateSummary() {
         val numCoins = coinList.size
         if (numCoins != 0) {
-            val walletStateText = "Coins in the wallet: $numCoins / 1000"
+            val walletStateText = "Coins in the wallet: $numCoins / $MAX_COINS_LIMIT"
             walletStateTextView.text = walletStateText
+            val depositStateText = "Coins deposited today: $numCoinsDeposited / $MAX_DEPOSIT"
+            depositStateTextView.text = depositStateText
         }
         else {
-            val walletStateText = "Coins in the wallet: 0 / 1000\nCollect coins on the" +
+            val walletStateText = "Coins in the wallet: 0 / $MAX_COINS_LIMIT\nCollect coins on the" +
                     " map" + " or check for any unopened gifts!"
             walletStateTextView.text = walletStateText
+            val depositStateText = "Coins deposited today: $numCoinsDeposited / $MAX_DEPOSIT"
+            depositStateTextView.text = depositStateText
         }
     }
 

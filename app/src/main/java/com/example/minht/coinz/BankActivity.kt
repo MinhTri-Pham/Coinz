@@ -2,6 +2,7 @@ package com.example.minht.coinz
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AlertDialog
 import android.util.Log
 import android.view.View
 import android.widget.*
@@ -55,9 +56,15 @@ class BankActivity : AppCompatActivity() {
 //        amountHeader.text = "Amount"
 //        balanceHeader = findViewById(R.id.balance_header)
 //        balanceHeader.text = "Balance"
-        transferList = findViewById(R.id.transfersList)
-        // Initialise display period spinner using default items
         displayPeriodSpinner = findViewById(R.id.displayPeriodSpinner)
+        transferList = findViewById(R.id.transfersList)
+        // Show info message with details of transaction
+        transferList.setOnItemClickListener{_,_,pos,_ ->
+            val selectedTransfer = displayBankTransfers[pos]
+            val transferInfo = AlertDialog.Builder(this)
+            transferInfo.setCancelable(true).setTitle("Transaction detail").setMessage(selectedTransfer.showDetails())
+            transferInfo.show()
+        }
     }
 
     // Initialise display period spinner
@@ -116,6 +123,7 @@ class BankActivity : AppCompatActivity() {
             val diffDays = (now.time - date.time) / (1000*60*60*24) // Count today as one day as well
             if (diffDays < displayPeriod) {
                 displayBankTransfers.add(bankTransfer)
+
             }
             // If a bank transfer before period found, terminate
             // Since all other transfers will have later date than this one

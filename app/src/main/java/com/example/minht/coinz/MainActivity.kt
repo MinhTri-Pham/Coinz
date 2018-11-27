@@ -21,6 +21,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.mapbox.android.core.location.LocationEngine
@@ -61,10 +62,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Coin collection mechanism variables
-    private var numCollectedCoins = 0 // Number of coins collected on the current day
+    private var numCollectCoins = 0 // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
     private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
-    private var walletList : ArrayList<Coin> = ArrayList()  // Set of coins in user's wallet
+    private var fullWallet = false
 
     // Map downloading
     private var downloadDate = "" // Format: YYYY/MM/DD
@@ -76,8 +77,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var uid : String
     private lateinit var db : FirebaseFirestore
 
-    // Bank Account
+    // Wallet & Bank Account
+    private var walletList : ArrayList<Coin> = ArrayList()  // List of coins in user's wallet
     private var bankAccount : BankAccount? = null
+    private var numDepositCoins = 0
 
     // Exchange rates for currencies
     private var penyRate = 0.0
@@ -92,20 +95,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var userDist = 0.0
     private var userCals = 0.0
     private var userMapsCompleted = 0
-    private var receivedDailyBonus = false // Whether player received daily bonus already
+    //private var receivedDailyBonus = false // Whether player received daily bonus already
 
     // Constants
     companion object {
-        val PREFS_FILE = "MyPrefsFile" // Storing data
+        const val PREFS_FILE = "MyPrefsFile" // Storing data
         const val TAG = "MainActivity" // Logging purposes
         // Keys to access values in Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY = "Username"
         const val EMAIL_KEY = "Email"
         const val WALLET_KEY = "Wallet"
-        const val BANK_ACCOUNT_KEY = "Bank"
+        const val BANK_KEY = "Bank"
+        const val NUM_DEPOSIT_KEY = "Number of deposited coins"
         const val SCORE_KEY = "Score"
-        const val LAST_PLAY_DATE_KEY = "Last play date"
+        const val LAST_PLAY_KEY = "Last play date"
         const val VISITED_MARKERS_KEY = "Visited markers"
         const val NUM_COINS_KEY = "Number of collected coins"
         const val DIST_KEY = "Distance walked"
@@ -116,8 +120,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val MAP_KEY = "lastCoinMap" // Latest coin map
         // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 5 // Maximum number of coins that can be collected per day
-        const val MAX_COINS_LIMIT = 15 // Maximum number of coins that can be in the wallet at any time
+        //const val MAX_DAILY_COINS = 5 // Maximum number of coins that can be collected per day
+        const val MAX_COINS_LIMIT = 2 // Maximum number of coins that can be in the wallet at any time
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,6 +136,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mAuth = FirebaseAuth.getInstance()
         uid = mAuth.uid!!
         db = FirebaseFirestore.getInstance()
+        val settings = FirebaseFirestoreSettings.Builder()
+                .setTimestampsInSnapshotsEnabled(true)
+                .build()
+        db.firestoreSettings = settings
         setUpNavDrawer()
         Mapbox.getInstance(this, getString(R.string.access_token))
 
@@ -185,7 +193,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     val taskResult = task.result
                     if (taskResult!!.exists()) {
                         // Load latest date when the user has played the game
-                        userLastPlay = taskResult.getString(LAST_PLAY_DATE_KEY)!!
+                        userLastPlay = taskResult.getString(LAST_PLAY_KEY)!!
                         Log.d(TAG, "[onMapReady] Loaded last date when user played as $userLastPlay")
                         // If user played today, load daily variables from Firestore
                         if (userLastPlay == currDate) {
@@ -196,17 +204,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             val type = object : TypeToken<MutableSet<String>>() {}.type
                             visitedMarkerSet = gson.fromJson(dataString, type)
                             // Load number of collected coins
-                            numCollectedCoins = taskResult.getLong(NUM_COINS_KEY)!!.toInt()
-                            Log.d(TAG, "[onMapReady] Loaded number of collected coins as $numCollectedCoins")
+                            numCollectCoins = taskResult.getLong(NUM_COINS_KEY)!!.toInt()
+                            Log.d(TAG, "[onMapReady] Loaded number of collected coins as $numCollectCoins")
+                            numDepositCoins = taskResult.getLong(NUM_DEPOSIT_KEY)!!.toInt()
+                            Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
+                            // Goes wrong
+//                            visitedMarkerSet = mutableSetOf()
+//                            numCollectCoins = 0
+//                            numDepositCoins = 0
+                            // Goes wrong
                         }
                         // Otherwise, reset daily variables and update last play date to today
                         else {
                             Log.d(TAG,"[onMapReady] First time playing today, resetting values")
                             visitedMarkerSet = mutableSetOf()
-                            numCollectedCoins = 0
-                            userDocRef.update(LAST_PLAY_DATE_KEY, currDate)
+                            numCollectCoins = 0
+                            numDepositCoins = 0
+                            userDocRef.update(LAST_PLAY_KEY, currDate)
                             userDocRef.update(VISITED_MARKERS_KEY, gson.toJson(visitedMarkerSet))
-                            userDocRef.update(NUM_COINS_KEY,numCollectedCoins)
+                            userDocRef.update(NUM_COINS_KEY,numCollectCoins)
+                            userDocRef.update(NUM_DEPOSIT_KEY,numDepositCoins)
                         }
                         // Download map if necessary
                         if (currDate == downloadDate) {
@@ -385,9 +402,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             setCameraPosition(originLocation!!)
             Log.d(TAG,"[onLocationChanged] Distance walked: $userDist")
             Log.d(TAG,"[onLocationChanged] Calories burned: $userCals")
-            if (walletList.size == MAX_COINS_LIMIT)
+            if (fullWallet) {
+                Log.d(TAG,"[onLocationChanged] Wallet is full, no need to check distances.")
                 return
-            // Compute distance to markers to each marker, checking if any is sufficiently close
+            }
             val mapIt = markerList.entries.iterator()
             while (mapIt.hasNext()) {
                 val pair = mapIt.next()
@@ -412,24 +430,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         }
                     }
                     walletList.add(coin)
-                    numCollectedCoins++
+                    numCollectCoins++
                     mapIt.remove()
                     Log.d(TAG, "[onLocationChanged] Coin ${coin.id} of ${marker.snippet} with value ${marker.title} collected and added to wallet")
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected and added to wallet", Toast.LENGTH_SHORT).show()
                     // Warn user if wallet is full
                     if (walletList.size == MAX_COINS_LIMIT) {
-                        Toast.makeText(this,"Can't collect coins, clean up your wallet!", Toast.LENGTH_SHORT).show()
+                        fullWallet = true
+                        Log.d(TAG, "[onLocationChanged] Wallet became full. Won't be able to collect coins")
+                        Toast.makeText(this,"Can't collect coins anymore, clean up your wallet!", Toast.LENGTH_SHORT).show()
                     }
                 }
-                if (numCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
-                    bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100))
-                    bankAccount!!.balance += 100.0
-                    userScore += 100.0
-                    Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
-                    Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
-                    userMapsCompleted++;
-                    receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
-                }
+//                if (numCollectedCoins == MAX_DAILY_COINS && !receivedDailyBonus && bankAccount != null) {
+//                    bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100))
+//                    bankAccount!!.balance += 100.0
+//                    userScore += 100.0
+//                    Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
+//                    Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
+//                    userMapsCompleted++;
+//                    receivedDailyBonus = true // Make sure player can't receive daily bonus more than once per day
+//                }
             }
         }
     }
@@ -484,7 +504,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
         Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
         Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-        Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectedCoins")
+        Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectCoins")
         Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerSet.size}\")")
         // Recall exchange rates
         penyRate = settings.getString("penyRate","0.0").toDouble()
@@ -545,15 +565,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         userDoc.update(VISITED_MARKERS_KEY,dataString)
         Log.d(TAG,"[saveData] Stored today's list of visited markers as $dataString")
         // Save number of today's number of collected coins
-        userDoc.update(NUM_COINS_KEY,numCollectedCoins)
-        Log.d(TAG, "[saveData] Stored today's number of collected as $numCollectedCoins")
+        userDoc.update(NUM_COINS_KEY,numCollectCoins)
+        Log.d(TAG, "[saveData] Stored today's number of collected coins as $numCollectCoins")
+        // Save number of today's number of deposited coins
+        userDoc.update(NUM_DEPOSIT_KEY,numDepositCoins)
+        Log.d(TAG, "[saveData] Stored today's number of deposited coins as $numDepositCoins")
         // Save wallet
         dataString = gson.toJson(walletList)
         userDoc.update(WALLET_KEY,dataString)
         Log.d(TAG, "[saveData] Stored wallet as $dataString")
         // Save bank account
         dataString = gson.toJson(bankAccount)
-        userDoc.update(BANK_ACCOUNT_KEY,dataString)
+        userDoc.update(BANK_KEY,dataString)
         Log.d(TAG, "[saveData] Stored bank account as $dataString")
         // Save score
         userDoc.update(SCORE_KEY,userScore)
@@ -583,8 +606,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
                     walletList = gson.fromJson(dataString, type)
+                    fullWallet = walletList.size >= MAX_COINS_LIMIT
+                    if (fullWallet) {
+                        Log.d(TAG, "[loadData] Wallet si full, can't collect coins.")
+                        Toast.makeText(this, "Your wallet is full, you won't be able to collect coins! Clean up your wallet.",
+                                Toast.LENGTH_SHORT).show()
+                    }
                     // Load bank account
-                    dataString = taskResult.getString(BANK_ACCOUNT_KEY)
+                    dataString = taskResult.getString(BANK_KEY)
                     Log.d(TAG,"[loadData] Loaded bank account as: $dataString")
                     bankAccount = gson.fromJson(dataString, BankAccount::class.java)
                     // Load score
@@ -595,10 +624,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Log.d(TAG,"[loadData] Loaded distance walked as: $userDist")
                     // Load calories burned
                     userCals = taskResult.getDouble(CAL_KEY)!!
-                    Log.d(TAG,"[loadData] Loaded user score as: $userCals")
+                    Log.d(TAG,"[loadData] Loaded calories burned as: $userCals")
                     // Load number of maps completed
                     userMapsCompleted = taskResult.getLong(NUM_MAP_KEY)!!.toInt()
-                    Log.d(TAG,"[loadData] Loaded user score as: $userMapsCompleted")
+                    Log.d(TAG,"[loadData] Loaded number of completed maps as: $userMapsCompleted")
+
+                    // Goes wrong
+//                    walletList = ArrayList()
+//                    bankAccount = BankAccount(userName,0.0, ArrayList())
+//                    userScore = 0.0
+//                    userDist = 0.0
+//                    userCals = 0.0
+                    // Goes wrong
                 }
                 else {
                     Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
