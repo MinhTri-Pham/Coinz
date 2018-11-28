@@ -66,7 +66,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
     private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
     private var fullWallet = false
-    private var dailyBonus = false // Whether player received daily bonus already
+    private var collectionBonus = 0
+    private var collectionBonusReceived = false // Whether player received daily bonus already
 
     // Map downloading
     private var latestFlag = false
@@ -102,7 +103,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private lateinit var mDrawerLayout : DrawerLayout
     private lateinit var mapDate : TextView
     private lateinit var progressInfo : TextView
-    private lateinit var rateInfo : TextView
+    private lateinit var bonusInfo : TextView
+    private lateinit var penyInfo : TextView
+    private lateinit var dolrInfo : TextView
+    private lateinit var quidInfo : TextView
+    private lateinit var shilInfo : TextView
 
     // Constants
     companion object {
@@ -128,7 +133,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val MAP_KEY = "lastCoinMap" // Latest coin map
         // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 5 // Maximum number of coins that can be collected per day
+        const val MAX_DAILY_COINS = 12 // Maximum number of coins that can be collected per day
         const val MAX_COINS_LIMIT = 200 // Maximum number of coins that can be in the wallet at any time
     }
 
@@ -152,8 +157,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Mapbox.getInstance(this, getString(R.string.access_token))
         // Map info views
         mapDate = findViewById(R.id.mapDate)
-        rateInfo = findViewById(R.id.rateInfo)
         progressInfo = findViewById(R.id.progressInfo)
+        bonusInfo = findViewById(R.id.bonusInfo)
+        penyInfo = findViewById(R.id.penyInfo)
+        dolrInfo = findViewById(R.id.dolrInfo)
+        quidInfo = findViewById(R.id.quidInfo)
+        shilInfo = findViewById(R.id.shilInfo)
         // Need findViewById for a com.mapbox.mapboxsdk.maps.MapView
         mapView = findViewById(R.id.mapboxMapView)
         mapView?.onCreate(savedInstanceState)
@@ -221,7 +230,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             numDepositCoins = taskResult.getLong(NUM_DEPOSIT_KEY)!!.toInt()
                             Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
                             progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
-                            dailyBonus = taskResult.getBoolean(DAILY_BONUS_KEY)!!
+                            collectionBonusReceived = taskResult.getBoolean(DAILY_BONUS_KEY)!!
                             // Goes wrong
 //                            updateDailyValues(userDocRef,currDate)
                             // Goes wrong
@@ -244,16 +253,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             Log.d(TAG,"[onMapReady] Map has already been downloaded today, rendering markers directly")
                             renderJson(map,mapJson)
                             mapDate.text = "Map date: $currDate"
-                            rateInfo.text = "Current exchange rates:\n\n" +
-                                    "PENY: ${String.format("%.3f",penyRate)}\n\n" +
-                                    "DOLR: ${String.format("%.3f",dolrRate)}\n\n" +
-                                    "QUID: ${String.format("%.3f",quidRate)}\n\n" +
-                                    "SHIL: ${String.format("%.3f",shilRate)}"
+                            penyInfo.text = "PENY: ${String.format("%.3f",penyRate)}"
+                            dolrInfo.text = "DOLR: ${String.format("%.3f",dolrRate)}"
+                            quidInfo.text = "QUID: ${String.format("%.3f",quidRate)}"
+                            shilInfo.text = "SHIL: ${String.format("%.3f",shilRate)}"
+
                         } else {
                             // First time today's map is used, need to download it
                             Log.d(TAG,"[onMapReady] First time this map was used today, download map from server")
-//                            downloadDate = currDate
-//                            mapDate.text = "Map date: $downloadDate"
                             downloadMap(currDate)
                         }
                     }
@@ -275,12 +282,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     private fun updateDailyValues(docRef : DocumentReference, currDate: String) {
         val gson = Gson()
+        userLastPlay = currDate
         visitedMarkerSet = mutableSetOf()
         numCollectCoins = 0
         progressInfo.text = "Coins: 0 / $MAX_DAILY_COINS"
         numDepositCoins = 0
-        dailyBonus = false
-        docRef.update(LAST_PLAY_KEY, currDate)
+        collectionBonusReceived = false
+        docRef.update(LAST_PLAY_KEY, userLastPlay)
         docRef.update(VISITED_MARKERS_KEY, gson.toJson(visitedMarkerSet))
         docRef.update(NUM_COINS_KEY,0)
         docRef.update(NUM_DEPOSIT_KEY,0)
@@ -340,10 +348,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         dolrRate = rates.getDouble("DOLR")
         quidRate = rates.getDouble("QUID")
         shilRate = rates.getDouble("SHIL")
-        Log.d(TAG,"[updateExchangeRates] Updated rate for PENY is " + String.format("%.2f",penyRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.2f",dolrRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.2f",quidRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.2f",shilRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for PENY is " + String.format("%.3f",penyRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.3f",dolrRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.3f",quidRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.3f",shilRate))
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         val editor = settings.edit()
         editor.putString("penyRate", penyRate.toString())
@@ -351,16 +359,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString("quidRate", quidRate.toString())
         editor.putString("shilRate", shilRate.toString())
         editor.apply()
-        Log.d(TAG,"[onStop] Stored rate of PENY as $penyRate")
-        Log.d(TAG, "[onStop] Stored rate of DOLR as $dolrRate")
-        Log.d(TAG, "[onStop] Stored rate of QUID as $quidRate")
-        Log.d(TAG, "[onStop] Stored rate of SHIL as $shilRate")
-        rateInfo.text = "Current exchange rates:\n\n" +
-                "PENY: ${String.format("%.3f",penyRate)}\n\n" +
-                "DOLR: ${String.format("%.3f",dolrRate)}\n\n" +
-                "QUID: ${String.format("%.3f",quidRate)}\n\n" +
-                "SHIL: ${String.format("%.3f",shilRate)}"
+        penyInfo.text = "PENY: ${String.format("%.3f",penyRate)}"
+        dolrInfo.text = "DOLR: ${String.format("%.3f",dolrRate)}"
+        quidInfo.text = "QUID: ${String.format("%.3f",quidRate)}"
+        shilInfo.text = "SHIL: ${String.format("%.3f",shilRate)}"
+    }
 
+    private fun getCollectionBonus() {
+        when {
+            userMapsCompleted < 10 -> collectionBonus = 100
+            userMapsCompleted < 50 -> collectionBonus = 400
+            userMapsCompleted < 100 -> collectionBonus = 700
+            userMapsCompleted < 250 -> collectionBonus = 1200
+            userMapsCompleted < 500 -> collectionBonus = 2000
+            userMapsCompleted < 1000 -> collectionBonus = 3500
+            else -> collectionBonus = 6000
+        }
+        bonusInfo.text = "Current bonus: $collectionBonus GOLD"
     }
 
     // Returns today's date in format: YYYY/MM/DD
@@ -449,11 +464,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             val currDay = getCurrentDate()
             if ((currDay != userLastPlay && userLastPlay != "" && latestFlag)) {
                 Log.d(TAG,"[onLocationChanged] Map expired")
+                latestFlag = false
                 signOut()
                 Toast.makeText(this, "Today's map has expired. Log in again to download the new map", Toast.LENGTH_LONG).show()
             }
             // Check full wallet or map completed
-            if (fullWallet || dailyBonus) {
+            if (fullWallet || collectionBonusReceived) {
                 Log.d(TAG, "[onLocationChanged] Can't collect anymore, since wallet full/map completed")
                 return
             }
@@ -486,14 +502,93 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                     Log.d(TAG, "[onLocationChanged] Coin ${coin.id} of ${marker.snippet} with value ${marker.title} collected and added to wallet")
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected and added to wallet", Toast.LENGTH_SHORT).show()
-                    if (numCollectCoins == MAX_DAILY_COINS && !dailyBonus && bankAccount != null) {
-                        bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received daily bonus of 100 GOLD",100.00,bankAccount!!.balance+100,ArrayList(),false))
-                        bankAccount!!.balance += 100.0
-                        userScore += 100.0
-                        Log.d(TAG, "[onLocationChanged] Daily bonus added to bank account")
-                        Toast.makeText(this,"Daily bonus 100 GOLD added to bank account", Toast.LENGTH_SHORT).show()
+                    if (numCollectCoins == MAX_DAILY_COINS && !collectionBonusReceived && bankAccount != null) {
+                        collectionBonusReceived = true // Make sure player can't receive daily bonus more than once per day
                         userMapsCompleted++
-                        dailyBonus = true // Make sure player can't receive daily bonus more than once per day
+                        // Create special dialogs for milestone completion
+                        // Otherwise just dialog informing user about collection bonus
+                        when (userMapsCompleted) {
+                            10 -> {
+                                collectionBonus = 400
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("\nYou've completed your 10th map!\n" +
+                                        "You now get a bigger reward of $collectionBonus coins.\n" +
+                                        "Complete 50 maps to increase your bonus again.")
+                                bonusInfo.show()
+                            }
+                            50 -> {
+                                collectionBonus = 700
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("\nYou've completed your 50th map!\n" +
+                                        "You now get a bigger reward of $collectionBonus GOLD.\n" +
+                                        "Complete 100 maps to increase your bonus again.")
+                                bonusInfo.show()
+                            }
+                            100 -> {
+                                collectionBonus = 1200
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("\nYou've completed your 100th map!\n" +
+                                        "You now get a bigger reward of $collectionBonus GOLD.\n" +
+                                        "Complete 250 maps to increase your bonus again.")
+                                bonusInfo.show()
+                            }
+                            250 -> {
+                                collectionBonus = 2000
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("\nYou've completed your 250th map!\n" +
+                                        "You now get a bigger reward of $collectionBonus GOLD." +
+                                        "\nComplete 500 maps to increase your bonus again. ")
+                                bonusInfo.show()
+                            }
+                            500 -> {
+                                collectionBonus = 3500
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("\nYou've completed your 500th map!\n" +
+                                        "You now get a bigger reward $collectionBonus GOLD.\n" +
+                                        "Complete 1000 maps to increase your bonus again.")
+                                bonusInfo.show()
+                            }
+                            1000 -> {
+                                collectionBonus = 6000
+                                Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
+                                        "$collectionBonus")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("You've completed your 1000th map!\n" +
+                                        "You now receive the maximum collection bonus $collectionBonus GOLD\n" +
+                                        "on each completion of the map.")
+                                bonusInfo.show()
+                            }
+                            else -> {
+                                Log.d(TAG, "[onLocationChanged] No milestone, collection bonus " +
+                                        "stays $collectionBonus GOLD")
+                                val bonusInfo = AlertDialog.Builder(this)
+                                bonusInfo.setTitle("Collection bonus").setCancelable(true)
+                                bonusInfo.setMessage("You've completed today's map! As a reward,\n" +
+                                        "you receive a collection bonus $collectionBonus GOLD")
+                                bonusInfo.show()
+                            }
+                        }
+                        bonusInfo.text = "Current bonus: $collectionBonus GOLD"
+                        bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received collection bonus $collectionBonus GOLD", collectionBonus.toDouble(),bankAccount!!.balance + collectionBonus,ArrayList(),false))
+                        bankAccount!!.balance += collectionBonus
+                        userScore += collectionBonus
+                        Log.d(TAG, "[onLocationChanged] Collection bonus added to bank account")
                 }
                     // Warn user if wallet is full
                     if (walletList.size == MAX_COINS_LIMIT) {
@@ -536,8 +631,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     public override fun onStart() {
         super.onStart()
         mapView?.onStart()
-        // Message to user
-        Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_LONG).show()
         // Handle location engine
         if (locationEngine != null) {
             try {
@@ -545,6 +638,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             } catch (ignored: SecurityException) {}
             locationEngine!!.addLocationEngineListener(this)
         }
+        Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
         // Restore data from Shared Preferences
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         // Recall map variables
@@ -645,8 +739,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         userDoc.update(NUM_MAP_KEY, userMapsCompleted)
         Log.d(TAG, "[saveData] Stored number of completed maps as $userMapsCompleted")
         // Save whether user has received daily bonus
-        userDoc.update(DAILY_BONUS_KEY,dailyBonus)
-        Log.d(TAG,"[saveData] Stored daily bonus receival as $dailyBonus")
+        userDoc.update(DAILY_BONUS_KEY,collectionBonusReceived)
+        Log.d(TAG,"[saveData] Stored daily bonus receival as $collectionBonusReceived")
     }
 
     // Load persistent user data from Firestore
@@ -685,7 +779,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     // Load number of maps completed
                     userMapsCompleted = taskResult.getLong(NUM_MAP_KEY)!!.toInt()
                     Log.d(TAG,"[loadData] Loaded number of completed maps as: $userMapsCompleted")
-
+                    getCollectionBonus()
                     // Goes wrong
 //                    walletList = ArrayList()
 //                    bankAccount = BankAccount(userName,0.0, ArrayList())
@@ -758,6 +852,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             else -> super.onOptionsItemSelected(item)
         }
     }
+
 
     private fun signOut() {
         saveData()

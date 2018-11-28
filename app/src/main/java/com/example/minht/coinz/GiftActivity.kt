@@ -53,7 +53,7 @@ class GiftActivity : AppCompatActivity() {
             else {
                 val giftPrompt = AlertDialog.Builder(this)
                 val giftMsg = "Confirm opening gift with contents:\n\n" + selectedGift.showContents()
-                giftPrompt.setTitle("Gift confirmation").setMessage(giftMsg)
+                giftPrompt.setTitle("Gift confirmation").setMessage(giftMsg).setCancelable(false)
                 // If "Open gift" is pressed, process accordingly
                 // See openGifts function for details
                 giftPrompt.setPositiveButton("Open gift") { _: DialogInterface?, _: Int ->

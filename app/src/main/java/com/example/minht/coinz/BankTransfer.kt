@@ -49,7 +49,7 @@ class BankTransfer (val date: String, val description: String, val amount: Doubl
         if (numShil != 0) {
             quantities.add("$numShil SHIL")
         }
-        val separator = ","
+        val separator = ", "
         val summaryBuilder = StringBuilder()
         for (quantity in quantities) {
             summaryBuilder.append(quantity).append(separator)

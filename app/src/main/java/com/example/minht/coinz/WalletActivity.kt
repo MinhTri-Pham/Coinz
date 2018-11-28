@@ -67,6 +67,7 @@ class WalletActivity : AppCompatActivity() {
         const val NUM_DEPOSIT_KEY = "Number of deposited coins"
         const val SCORE_KEY = "Score"
         // Other constants
+        const val DAILY_BONUS = 200
         const val MAX_COINS_LIMIT = 500 // Maximum number of coins that can be in the wallet at any time
         const val MAX_DEPOSIT = 25 // Maximum number of coins deposited per day
         const val MAX_GIFTS = 10 // Maximum number of unopened gifts one can have

@@ -47,15 +47,6 @@ class BankActivity : AppCompatActivity() {
         usernameSummary = findViewById(R.id.usernameSummary)
         balanceSummary = findViewById(R.id.balanceSummary)
         transferDesc = findViewById(R.id.transfersDesc)
-//        // Initialise header
-//        dateHeader = findViewById(R.id.date_header)
-//        dateHeader.text = "Date"
-//        descHeader = findViewById(R.id.desc_header)
-//        descHeader.text = "Description"
-//        amountHeader = findViewById(R.id.amount_header)
-//        amountHeader.text = "Amount"
-//        balanceHeader = findViewById(R.id.balance_header)
-//        balanceHeader.text = "Balance"
         displayPeriodSpinner = findViewById(R.id.displayPeriodSpinner)
         transferList = findViewById(R.id.transfersList)
         // Show info message with details of transaction

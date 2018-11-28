@@ -17,10 +17,12 @@ class LoginActivity : AppCompatActivity() {
 
     private val tag = "LoginActivity"
     private lateinit var mAuth : FirebaseAuth
-    private lateinit var loginButton : Button
-    private lateinit var registerLink : TextView
     private lateinit var emailText : EditText
     private lateinit var passwordText : EditText
+    private lateinit var loginButton : Button
+    private lateinit var registerLink : TextView
+    private lateinit var forgotLink : TextView
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +33,13 @@ class LoginActivity : AppCompatActivity() {
         // Handle login button and register link click
         loginButton.setOnClickListener{ _ -> loginUser() }
         registerLink = findViewById<View>(R.id.signUpLink) as TextView
-        registerLink.setOnClickListener { _ -> switchToRegister() }
+        registerLink.setOnClickListener { _ ->
+            startActivity(Intent(this,RegisterActivity::class.java))
+        }
+        forgotLink = findViewById(R.id.forgotPasswordLink) as TextView
+        forgotLink.setOnClickListener{_ ->
+            startActivity(Intent(this,ResetPasswordActivity::class.java))
+        }
     }
 
     // Invoked when user presses the Log in button
@@ -60,11 +68,4 @@ class LoginActivity : AppCompatActivity() {
             Toast.makeText(this, "Please fill the credentials",Toast.LENGTH_SHORT).show()
         }
     }
-
-    // If uses presses the link to create a new account, he's taken to the Register screen
-    private fun switchToRegister() {
-        startActivity(Intent(this,RegisterActivity::class.java))
-    }
-
-
 }

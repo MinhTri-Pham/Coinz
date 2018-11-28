@@ -111,7 +111,7 @@ class RegisterActivity : AppCompatActivity() {
                                 user[CAL_KEY] = 0
                                 user[NUM_MAP_KEY] = 0
                                 user[LAST_PLAY_DATE_KEY] = ""
-                                user[VISITED_MARKERS_KEY] = emptyVisitedSet
+                                user[VISITED_MARKERS_KEY] = gson.toJson(emptyVisitedSet)
                                 user[NUM_COINS_KEY] = 0
                                 user[NUM_DEPOSIT_KEY] = 0
                                 user[DAILY_BONUS_KEY] = false

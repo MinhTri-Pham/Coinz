@@ -26,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:hint="Choose a username"
+            android:hint="@string/username_hint"
             android:inputType="text" />
 
         <EditText
@@ -34,7 +34,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:hint="Enter your email"
+            android:hint="@string/email_hint"
             android:inputType="textEmailAddress" />
 
         <EditText
@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:hint="Enter your password"
+            android:hint="@string/password_hint"
             android:inputType="textPassword" />
 
         <Button
