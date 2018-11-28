@@ -3,6 +3,7 @@ package com.example.minht.coinz
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
+import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
@@ -44,7 +45,10 @@ class WalletActivity : AppCompatActivity() {
     private var dolrRate : Double = 0.0
     private var quidRate : Double = 0.0
     private var shilRate : Double = 0.0
+
+    // Other user variables
     private var userScore = 0.0
+    private var lastTimeStamp=""
 
     // Other general variables
     private lateinit var mAuth: FirebaseAuth
@@ -64,7 +68,7 @@ class WalletActivity : AppCompatActivity() {
         const val SCORE_KEY = "Score"
         // Other constants
         const val MAX_COINS_LIMIT = 500 // Maximum number of coins that can be in the wallet at any time
-        const val MAX_DEPOSIT = 3 // Maximum number of coins deposited per day
+        const val MAX_DEPOSIT = 25 // Maximum number of coins deposited per day
         const val MAX_GIFTS = 10 // Maximum number of unopened gifts one can have
     }
 
@@ -115,6 +119,18 @@ class WalletActivity : AppCompatActivity() {
         // Deposit selected coins
         depositButton = findViewById(R.id.deposit_coins_button)
         depositButton.setOnClickListener{ _ ->
+            // If new day started, reset number of deposited coins
+            // Note: new map downloaded on return to MainActivity
+            val currDate = getCurrentDate()
+            if (lastTimeStamp != currDate) {
+                Log.d(TAG,"[onCreate] New day, reset deposit counter")
+                Toast.makeText(this,"New day has started, your deposit limit has been renewed", Toast.LENGTH_SHORT).show()
+                numCoinsDeposited = 0
+                depositStateTextView.text = "Coins deposited today: $numCoinsDeposited / $MAX_DEPOSIT"
+            }
+            else {
+                lastTimeStamp = currDate
+            }
             getSelectedCoins()
             // Check if any coins were selected
             if (selectedCoinList.size != 0) {
@@ -394,6 +410,7 @@ class WalletActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        lastTimeStamp = getCurrentDate()
         // Load exchange rates from Shared Preferences
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         penyRate = settings.getString("penyRate","0.0").toDouble()

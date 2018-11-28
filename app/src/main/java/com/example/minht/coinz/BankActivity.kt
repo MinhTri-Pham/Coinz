@@ -81,15 +81,15 @@ class BankActivity : AppCompatActivity() {
                 when (option) {
                     "Today" -> {
                         displayPeriod = 1
-                        transferDesc.text = "Transfers today:"
+                        transferDesc.text = "Transactions today:"
                     }
                     "Last week" -> {
                         displayPeriod = 7
-                        transferDesc.text = "Transfers in last week:"
+                        transferDesc.text = "Transactions in last week:"
                     }
                     "Last 2 weeks" -> {
                         displayPeriod = 14
-                        transferDesc.text = "Transfers in today:"
+                        transferDesc.text = "Transactions today:"
                     }
                     "Last month" -> {
                         val now = Date() // Current time
@@ -97,7 +97,7 @@ class BankActivity : AppCompatActivity() {
                         val nowString = sdf.format(now).toString()
                         displayPeriod = nowString.substring(8).toInt()
                         Log.d(TAG,"Display period is $displayPeriod days")
-                        transferDesc.text = "Transfers in last month:"
+                        transferDesc.text = "Transactions in last month:"
                     }
                 }
                 Log.d(TAG, "[initSpinner] $option selected as display period")

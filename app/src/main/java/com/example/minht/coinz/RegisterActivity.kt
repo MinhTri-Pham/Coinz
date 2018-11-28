@@ -44,6 +44,7 @@ class RegisterActivity : AppCompatActivity() {
         const val DIST_KEY = "Distance walked"
         const val CAL_KEY = "Calories burned"
         const val NUM_MAP_KEY = "Number of completed maps"
+        const val DAILY_BONUS_KEY = "Daily bonus"
         // For holding user count in SharedPreferences
         const val PREFS_FILE = "MyPrefsFile"
         const val NUM_PLAYERS_KEY = "numPlayers"
@@ -55,10 +56,10 @@ class RegisterActivity : AppCompatActivity() {
 
         mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
-//        val settings = FirebaseFirestoreSettings.Builder()
-//                .setTimestampsInSnapshotsEnabled(true)
-//                .build()
-//        db.firestoreSettings = settings
+        val settings = FirebaseFirestoreSettings.Builder()
+                .setTimestampsInSnapshotsEnabled(true)
+                .build()
+        db.firestoreSettings = settings
         registerButton = findViewById<View>(R.id.buttonRegister) as Button
         loginLink = findViewById<View>(R.id.signInLink) as TextView
 
@@ -101,6 +102,7 @@ class RegisterActivity : AppCompatActivity() {
                                 val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
                                 val emptyVisitedSet = mutableSetOf<String>()
                                 val gson = Gson()
+                                // Initialise user data
                                 user[WALLET_KEY] = gson.toJson(emptyWallet)
                                 user[BANK_KEY] = gson.toJson(emptyBankAccount)
                                 user[GIFTS_KEY] = gson.toJson(emptyGifts)
@@ -112,6 +114,8 @@ class RegisterActivity : AppCompatActivity() {
                                 user[VISITED_MARKERS_KEY] = emptyVisitedSet
                                 user[NUM_COINS_KEY] = 0
                                 user[NUM_DEPOSIT_KEY] = 0
+                                user[DAILY_BONUS_KEY] = false
+                                // Update Firestore
                                 db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
                                     Log.d(TAG,"[registerUser] Created new user")
                                     Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
