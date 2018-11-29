@@ -2,6 +2,7 @@ package com.example.minht.coinz
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -64,8 +65,19 @@ class RegisterActivity : AppCompatActivity() {
         loginLink = findViewById<View>(R.id.signInLink) as TextView
 
         // Handle register button and login link click
-        registerButton.setOnClickListener { _ -> registerUser() }
-        loginLink.setOnClickListener{ _ -> switchToLogin() }
+        registerButton.setOnClickListener { _ ->
+            if (isNetworkAvailable()) {
+                Log.d(TAG,"[onCreate] User connected, can proceed with registration")
+                registerUser()
+            }
+            else {
+                Log.d(TAG, "[onCreate] User not connected, can't proceed with registration")
+                Toast.makeText(this,"Check your internet connection!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        loginLink.setOnClickListener{ _ ->
+            startActivity(Intent(this,LoginActivity::class.java))
+        }
     }
 
     // Invoked when user presses the Log in button
@@ -156,8 +168,9 @@ class RegisterActivity : AppCompatActivity() {
                     }
                 }
                 else {
-                    Toast.makeText(this,"Registration failed, check your internet connection!",Toast.LENGTH_SHORT).show()
                     Log.d(TAG,"[registerUser] Problems when checking uniqueness of username")
+                    val message = checkUsernameTask.exception!!.message
+                    Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -166,10 +179,12 @@ class RegisterActivity : AppCompatActivity() {
             Log.d(TAG,"[registerUser] Registration failed because input was empty")
             Toast.makeText(this, "Please fill all credentials", Toast.LENGTH_SHORT).show()
         }
-
     }
 
-    private fun switchToLogin() {
-        startActivity(Intent(this,LoginActivity::class.java))
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 }

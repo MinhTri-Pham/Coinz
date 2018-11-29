@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.location.Location
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.design.widget.NavigationView
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var fullWallet = false
     private var collectionBonus = 0
     private var collectionBonusReceived = false // Whether player received daily bonus already
+    private var connectionFlag = false // Whether connection warning issued user
 
     // Map downloading
     private var latestFlag = false
@@ -133,7 +135,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val MAP_KEY = "lastCoinMap" // Latest coin map
         // Other constants
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
-        const val MAX_DAILY_COINS = 12 // Maximum number of coins that can be collected per day
+        const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected per day
         const val MAX_COINS_LIMIT = 200 // Maximum number of coins that can be in the wallet at any time
     }
 
@@ -266,8 +268,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     }
                 }
                 else {
-                    Log.d(TAG,"[onMapReady] problem with fetching data")
-                    Toast.makeText(this,"Problems with loading data, check internet connection", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[onMapReady] Problem with fetching data")
+                    val message = task.exception!!.message
+                    Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -466,10 +469,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 Log.d(TAG,"[onLocationChanged] Map expired")
                 latestFlag = false
                 signOut()
-                Toast.makeText(this, "Today's map has expired. Log in again to download the new map", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Today's map has expired. Log in again to download " +
+                        "the new map", Toast.LENGTH_SHORT).show()
             }
-            // Check full wallet or map completed
-            if (fullWallet || collectionBonusReceived) {
+            // Check internet connection
+            if (!isNetworkAvailable() && !connectionFlag) {
+                Log.d(TAG,"[onLocationChanged] User disconnected, disable app")
+                Toast.makeText(this, "No connection found. Coins can't be collected and " +
+                        "switching to activities will lead to an automatic log off unless you connect again.",
+                        Toast.LENGTH_SHORT).show()
+                connectionFlag = true
+            }
+            // If user reconnects, collection is enabled
+            if (isNetworkAvailable() && connectionFlag) {
+                Log.d(TAG, "[onLocationChanged] User reconnected, enable app")
+                connectionFlag = false
+            }
+            // Block further notifications and collection if full wallet/map completed/not connected
+            // And warning was already issued
+            if (fullWallet || collectionBonusReceived || connectionFlag) {
                 Log.d(TAG, "[onLocationChanged] Can't collect anymore, since wallet full/map completed")
                 return
             }
@@ -638,36 +656,46 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             } catch (ignored: SecurityException) {}
             locationEngine!!.addLocationEngineListener(this)
         }
-        Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
-        // Restore data from Shared Preferences
-        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        // Recall map variables
-        downloadDate = settings.getString(DOWNLOAD_DATE_KEY, "")
-        mapString = settings.getString(MAP_KEY,"")
-        if (mapString == "") {
-            mapJson = JSONObject()
+        // Check internet connection
+        if (isNetworkAvailable()) {
+            Log.d(TAG,"[onStart] User connected, start as usual")
+            Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
+            // Restore data from Shared Preferences
+            val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+            // Recall map variables
+            downloadDate = settings.getString(DOWNLOAD_DATE_KEY, "")
+            mapString = settings.getString(MAP_KEY,"")
+            if (mapString == "") {
+                mapJson = JSONObject()
+            }
+            else {
+                mapJson = JSONObject(mapString)
+            }
+            Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
+            Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
+            Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectCoins")
+            Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerSet.size}\")")
+            // Recall exchange rates
+            penyRate = settings.getString("penyRate","0.0").toDouble()
+            dolrRate = settings.getString("dolrRate","0.0").toDouble()
+            quidRate = settings.getString("quidRate","0.0").toDouble()
+            shilRate = settings.getString("shilRate","0.0").toDouble()
+            Log.d(TAG, "[onStart] Recalled PENY rate as $penyRate")
+            Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
+            Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
+            Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
+            loadData() // Load data from Firestore
         }
         else {
-            mapJson = JSONObject(mapString)
+            Log.d(TAG, "[onStart] User disconnected")
+            forcedSignOut()
+            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+                    "connection and log in again.", Toast.LENGTH_SHORT).show()
         }
-        Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
-        Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-        Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectCoins")
-        Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerSet.size}\")")
-        // Recall exchange rates
-        penyRate = settings.getString("penyRate","0.0").toDouble()
-        dolrRate = settings.getString("dolrRate","0.0").toDouble()
-        quidRate = settings.getString("quidRate","0.0").toDouble()
-        shilRate = settings.getString("shilRate","0.0").toDouble()
-        Log.d(TAG, "[onStart] Recalled PENY rate as $penyRate")
-        Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
-        Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
-        Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
-        loadData() // Load data from Firestore
     }
 
     public override fun onResume() {
-        super.onStart()
+        super.onResume()
         mapView?.onResume()
     }
 
@@ -853,12 +881,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
-
+    // Usual sign out
     private fun signOut() {
         saveData()
-        Log.d(TAG,"[onNavigationItemSelected] Signing out user $uid")
+        Log.d(TAG,"[signOut] Signing out user $userName")
         mAuth.signOut()
         // Clear activity stack
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
+    }
+
+    // Forced sign out due to connectivity issues
+    private fun forcedSignOut() {
+        Log.d(TAG,"[signOut] Signing out user $userName")
+        mAuth.signOut()
         val resetIntent = Intent(this, LoginActivity::class.java)
         resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -915,5 +953,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
         }
         return true
+    }
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 }

@@ -1,5 +1,8 @@
 package com.example.minht.coinz
 
+import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
@@ -67,32 +70,40 @@ class BankActivity : AppCompatActivity() {
         displayPeriodSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
                 displayBankTransfers.clear() // Clear from previous session (if any)
-                val option = parent!!.getItemAtPosition(pos).toString()
-                // Set display period accordingly and customise text just before listview
-                when (option) {
-                    "Today" -> {
-                        displayPeriod = 1
-                        transferDesc.text = "Transactions today:"
+                if (isNetworkAvailable()) {
+                    Log.d(TAG,"[initSpinner] User connected, rendering history as usual")
+                    val option = parent!!.getItemAtPosition(pos).toString()
+                    // Set display period accordingly and customise text just before listview
+                    when (option) {
+                        "Today" -> {
+                            displayPeriod = 1
+                            transferDesc.text = "Transactions today:"
+                        }
+                        "Last week" -> {
+                            displayPeriod = 7
+                            transferDesc.text = "Transactions in last week:"
+                        }
+                        "Last 2 weeks" -> {
+                            displayPeriod = 14
+                            transferDesc.text = "Transactions in last two weeks:"
+                        }
+                        "Last month" -> {
+                            val now = Date() // Current time
+                            val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+                            val nowString = sdf.format(now).toString()
+                            displayPeriod = nowString.substring(8).toInt()
+                            Log.d(TAG,"Display period is $displayPeriod days")
+                            transferDesc.text = "Transactions in last month:"
+                        }
                     }
-                    "Last week" -> {
-                        displayPeriod = 7
-                        transferDesc.text = "Transactions in last week:"
-                    }
-                    "Last 2 weeks" -> {
-                        displayPeriod = 14
-                        transferDesc.text = "Transactions today:"
-                    }
-                    "Last month" -> {
-                        val now = Date() // Current time
-                        val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-                        val nowString = sdf.format(now).toString()
-                        displayPeriod = nowString.substring(8).toInt()
-                        Log.d(TAG,"Display period is $displayPeriod days")
-                        transferDesc.text = "Transactions in last month:"
-                    }
+                    Log.d(TAG, "[initSpinner] $option selected as display period")
+                    filterTransfers()
                 }
-                Log.d(TAG, "[initSpinner] $option selected as display period")
-                filterTransfers()
+                else {
+                    Log.d(TAG,"[initSpinner] User disconnected, nothing to display")
+                    Toast.makeText(this@BankActivity,"Can't load transactions! " +
+                            "Check your internet connection", Toast.LENGTH_SHORT).show()
+                }
                 bankAdapter = BankAdapter(this@BankActivity,displayBankTransfers)
                 transferList.adapter = bankAdapter
             }
@@ -103,7 +114,7 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
-    // Select transfer in the selected period
+    // Identify transactions in the selected period
     private fun filterTransfers() {
         val now = Date() // Current time
         val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
@@ -114,7 +125,6 @@ class BankActivity : AppCompatActivity() {
             val diffDays = (now.time - date.time) / (1000*60*60*24) // Count today as one day as well
             if (diffDays < displayPeriod) {
                 displayBankTransfers.add(bankTransfer)
-
             }
             // If a bank transfer before period found, terminate
             // Since all other transfers will have later date than this one
@@ -127,23 +137,49 @@ class BankActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Load bank account from Firestore
-        val userDocRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
-        userDocRef.get().addOnCompleteListener{ task: Task<DocumentSnapshot> ->
-            if (task.isSuccessful) {
-                val dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
-                Log.d(TAG, "[onStart] loaded bank account as $dataString")
-                val gson = Gson()
-                bankAccount = gson.fromJson(dataString, BankAccount::class.java)
-                // Load views
-                initSpinner()
-                usernameSummary.text = "Account owner: " + bankAccount.owner
-                balanceSummary.text = "Current balance: " + String.format("%.2f",bankAccount.balance)
-            }
-            else {
-                Log.d(TAG,"[onStart] Failed to load bank account")
-                Toast.makeText(this, "Failed to load your bank account, check your internet connection!", Toast.LENGTH_SHORT).show()
+        if (isNetworkAvailable()) {
+            // Load data if network connection available
+            Log.d(TAG,"[onStart] User connected, start as usual")
+            val userDocRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
+            userDocRef.get().addOnCompleteListener{ task: Task<DocumentSnapshot> ->
+                if (task.isSuccessful) {
+                    val dataString = task.result!!.get(BANK_ACCOUNT_KEY).toString()
+                    Log.d(TAG, "[onStart] loaded bank account as $dataString")
+                    val gson = Gson()
+                    bankAccount = gson.fromJson(dataString, BankAccount::class.java)
+                    // Load views
+                    initSpinner()
+                    usernameSummary.text = "Account owner: " + bankAccount.owner
+                    balanceSummary.text = "Current balance: " + String.format("%.2f",bankAccount.balance)
+                }
+                else {
+                    val message = task.exception!!.message
+                    Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+                }
             }
         }
+        else {
+            // Sign out user if no network connection
+            Log.d(TAG,"[onStart] User disconnected, can't load data")
+            signOut()
+            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+                    "connection and log in again.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Check if network connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
+    private fun signOut() {
+        Log.d(TAG,"[signOut] Signing out user")
+        mAuth.signOut()
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
     }
 }

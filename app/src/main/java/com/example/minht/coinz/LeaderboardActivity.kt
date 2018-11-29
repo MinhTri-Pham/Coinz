@@ -1,6 +1,8 @@
 package com.example.minht.coinz
 
 import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -8,6 +10,7 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
@@ -15,6 +18,7 @@ import kotlin.collections.ArrayList
 
 class LeaderboardActivity : AppCompatActivity() {
 
+    private lateinit var mAuth : FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private var numDisplayItems = DEFAULT_DISPLAY_NUM // How many items will be displayed, [X] by default
 
@@ -46,6 +50,7 @@ class LeaderboardActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_leaderboard)
+        mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         scoreTextView = findViewById(R.id.scoresTextView)
         scoreListView = findViewById(R.id.scores)
@@ -64,7 +69,16 @@ class LeaderboardActivity : AppCompatActivity() {
         Log.d(TAG, "[onStart] Username of current user: $userName")
         Log.d(TAG, "[onStart] Score of current user: $userScore")
         cleanUp()
-        generateLeaderboard()
+        if (isNetworkAvailable()) {
+            Log.d(TAG, "[onStart] User connected, start as usual")
+            generateLeaderboard()
+        }
+        else {
+            Log.d(TAG, "[onStart] User disconnected, sign out")
+            signOut()
+            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+                    "connection and log in again.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // Generate current leaderboard
@@ -125,7 +139,8 @@ class LeaderboardActivity : AppCompatActivity() {
                     }
                     else {
                         Log.d(TAG,"[generateLeaderboard] Problem fetching data")
-                        Toast.makeText(this,"Failed to load data, check your internet connection", Toast.LENGTH_SHORT).show()
+                        val message = task.exception!!.message
+                        Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
                     }
                 }
     }
@@ -142,7 +157,8 @@ class LeaderboardActivity : AppCompatActivity() {
             }
             else {
                 Log.d(TAG,"[findUserRank] Problem fetching data")
-                Toast.makeText(this,"Failed to load data, check your internet connection", Toast.LENGTH_SHORT).show()
+                val message = task.exception!!.message
+                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
                 userRankTextView.text = "-"
             }
         }
@@ -153,5 +169,22 @@ class LeaderboardActivity : AppCompatActivity() {
         leaderboard.clear() // Reset leaderboard
         numDisplayItems = DEFAULT_DISPLAY_NUM // Reset number of displayed items to default
         userRank = -1
+    }
+
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
+    // Sign out if user not connected to internet when activity started
+    private fun signOut() {
+        Log.d(TAG,"[signOut] Signing out user $userName")
+        mAuth.signOut()
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
     }
 }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
@@ -67,8 +68,7 @@ class WalletActivity : AppCompatActivity() {
         const val NUM_DEPOSIT_KEY = "Number of deposited coins"
         const val SCORE_KEY = "Score"
         // Other constants
-        const val DAILY_BONUS = 200
-        const val MAX_COINS_LIMIT = 500 // Maximum number of coins that can be in the wallet at any time
+        const val MAX_COINS_LIMIT = 200 // Maximum number of coins that can be in the wallet at any time
         const val MAX_DEPOSIT = 25 // Maximum number of coins deposited per day
         const val MAX_GIFTS = 10 // Maximum number of unopened gifts one can have
     }
@@ -87,34 +87,47 @@ class WalletActivity : AppCompatActivity() {
         transferButton = findViewById(R.id.transfer_coins_button)
         // Send selected coins to someone
         transferButton.setOnClickListener { _ ->
-            getSelectedCoins()
-            // If some coins collected, open a prompt input dialog to type username of recipient directly
-            if (selectedCoinList.size != 0) {
-                val layoutInflater = LayoutInflater.from(this)
-                val promptView = layoutInflater.inflate(R.layout.username_prompt,null)
-                val usernamePrompt = AlertDialog.Builder(this)
-                val usernameInput = promptView.findViewById(R.id.recipient_username_editText) as EditText
-                usernamePrompt.setView(promptView)
-                usernamePrompt.setTitle("Choose transfer recipient").setCancelable(false)
-                usernamePrompt.setPositiveButton("Confirm transfer") { _:DialogInterface, _:Int ->}
-                usernamePrompt.setNegativeButton("Cancel") { _:DialogInterface, _:Int ->}
-                val userDialog = usernamePrompt.create()
-                userDialog.show()
-                // Pressing "Confirm transfer" processes this transfer
-                // Details in the makeTransfer function
-                userDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { _: View ->
-                    makeTransfer(usernameInput.text.toString(), userDialog)
+            if (isNetworkAvailable()) {
+                getSelectedCoins()
+                // If some coins collected, open a prompt input dialog to type username of recipient directly
+                if (selectedCoinList.size != 0) {
+                    val layoutInflater = LayoutInflater.from(this)
+                    val promptView = layoutInflater.inflate(R.layout.username_prompt,null)
+                    val usernamePrompt = AlertDialog.Builder(this)
+                    val usernameInput = promptView.findViewById(R.id.recipient_username_editText) as EditText
+                    usernamePrompt.setView(promptView)
+                    usernamePrompt.setTitle("Choose transfer recipient").setCancelable(false)
+                    usernamePrompt.setPositiveButton("Confirm transfer") { _:DialogInterface, _:Int ->}
+                    usernamePrompt.setNegativeButton("Cancel") { _:DialogInterface, _:Int ->}
+                    val userDialog = usernamePrompt.create()
+                    userDialog.show()
+                    // Pressing "Confirm transfer" processes this transfer
+                    // Details in the makeTransfer function
+                    userDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { _: View ->
+                        if (isNetworkAvailable()) {
+                            Log.d(TAG,"[onCreate] User connected, can proceed with transfer")
+                            makeTransfer(usernameInput.text.toString(), userDialog)
+                        }
+                        else {
+                            Log.d(TAG,"[onCreate] User not connected, can't proceed with transfer")
+                            Toast.makeText(this,"Check your internet connection!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    // Pressing "Cancel" closes the prompt dialog and all coins are deselected
+                    userDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { _:View ->
+                        Log.d(TAG,"[onCreate] Transfer cancelled")
+                        deselectAll()
+                        userDialog.dismiss()
+                    }
                 }
-                // Pressing "Cancel" closes the prompt dialog and all coins are deselected
-                userDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { _:View ->
-                    Log.d(TAG,"[onCreate] Transfer cancelled")
-                    deselectAll()
-                    userDialog.dismiss()
+                else {
+                    Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[onCreate] No coins selected for transfer")
                 }
             }
             else {
-                Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
-                Log.d(TAG,"[onCreate] No coins selected for transfer")
+                Log.d(TAG,"[onCreate] User not connected, can't proceed with transfer")
+                Toast.makeText(this,"Check your internet connection!", Toast.LENGTH_SHORT).show()
             }
         }
         // Deposit selected coins
@@ -152,14 +165,20 @@ class WalletActivity : AppCompatActivity() {
                     }
                 }
                 else {
-                    Log.d(TAG,"[onCreate] Can deposit selected coins")
-                    makeDeposit()
-                    coinList.removeAll(selectedCoinList)
-                    // Save new data for user
-                    saveData()
-                    selectedCoinList.clear()
-                    // Update screen
-                    updateScreen()
+                    if (isNetworkAvailable()) {
+                        Log.d(TAG,"[onCreate] User connected to internet, can proceed with deposit")
+                        makeDeposit()
+                        coinList.removeAll(selectedCoinList)
+                        // Save new data for user
+                        saveData()
+                        selectedCoinList.clear()
+                        // Update screen
+                        updateScreen()
+                    }
+                    else {
+                        Log.d(TAG,"[onCreate] User not connected, can't proceed with deposit")
+                        Toast.makeText(this, "Check your internet connection!",Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             else {
@@ -409,19 +428,44 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
     override fun onStart() {
         super.onStart()
-        lastTimeStamp = getCurrentDate()
-        // Load exchange rates from Shared Preferences
-        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        penyRate = settings.getString("penyRate","0.0").toDouble()
-        dolrRate = settings.getString("dolrRate","0.0").toDouble()
-        quidRate = settings.getString("quidRate","0.0").toDouble()
-        shilRate = settings.getString("shilRate","0.0").toDouble()
-        Log.d(TAG, "[onStart] Recalled PENY rate as $penyRate")
-        Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
-        Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
-        Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
-        loadData() // Other data loaded from Firestore
+        if (isNetworkAvailable()) {
+            Log.d(TAG,"[onStart] User connected, start as usual")
+            lastTimeStamp = getCurrentDate()
+            // Load exchange rates from Shared Preferences
+            val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+            penyRate = settings.getString("penyRate","0.0").toDouble()
+            dolrRate = settings.getString("dolrRate","0.0").toDouble()
+            quidRate = settings.getString("quidRate","0.0").toDouble()
+            shilRate = settings.getString("shilRate","0.0").toDouble()
+            Log.d(TAG, "[onStart] Recalled PENY rate as $penyRate")
+            Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
+            Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
+            Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
+            loadData() // Other data loaded from Firestore
+        }
+        else {
+            Log.d(TAG,"[onStart] User disconnected, sign out")
+            signOut()
+            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+                    "connection and log in again.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun signOut() {
+        Log.d(TAG,"[signOut] Signing out user")
+        mAuth.signOut()
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
     }
 }

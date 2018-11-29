@@ -1,6 +1,9 @@
 package com.example.minht.coinz
 
+import android.content.Context
 import android.content.DialogInterface
+import android.content.Intent
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
@@ -43,25 +46,30 @@ class GiftActivity : AppCompatActivity() {
         giftListView = findViewById(R.id.gift_list)
         giftState = findViewById(R.id.gift_state)
         giftListView.setOnItemClickListener { _, _, pos, _ ->
-            val selectedGift = giftList[pos]
-            // If no space in wallet, warn user
-            if (walletList.size > MAX_COINS_LIMIT - selectedGift.contents.size) {
-                Toast.makeText(this, "Don't have enough space in your wallet! Clean up your wallet.",
-                        Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "[onCreate] Can't open gift, since there's not enough space in the wallet")
+            if (isNetworkAvailable()) {
+                val selectedGift = giftList[pos]
+                // If no space in wallet, warn user
+                if (walletList.size > MAX_COINS_LIMIT - selectedGift.contents.size) {
+                    Toast.makeText(this, "Don't have enough space in your wallet! Clean up your wallet.",
+                            Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "[onCreate] Can't open gift, since there's not enough space in the wallet")
+                }
+                else {
+                    val giftPrompt = AlertDialog.Builder(this)
+                    val giftMsg = "Confirm opening gift with contents:\n\n" + selectedGift.showContents()
+                    giftPrompt.setTitle("Gift confirmation").setMessage(giftMsg).setCancelable(false)
+                    giftPrompt.setPositiveButton("Open gift") { _: DialogInterface?, _: Int ->
+                        openGift(selectedGift)
+                    }
+                    // If "Cancel" is pressed, dialog closes and no changes occur
+                    giftPrompt.setNegativeButton("Cancel") { _, _ ->}
+                    giftPrompt.show()
+                }
             }
             else {
-                val giftPrompt = AlertDialog.Builder(this)
-                val giftMsg = "Confirm opening gift with contents:\n\n" + selectedGift.showContents()
-                giftPrompt.setTitle("Gift confirmation").setMessage(giftMsg).setCancelable(false)
-                // If "Open gift" is pressed, process accordingly
-                // See openGifts function for details
-                giftPrompt.setPositiveButton("Open gift") { _: DialogInterface?, _: Int ->
-                    openGift(selectedGift)
-                }
-                // If "Cancel" is pressed, dialog closes and no changes take place
-                giftPrompt.setNegativeButton("Cancel") { _, _ ->}
-                giftPrompt.show()
+                Log.d(TAG,"[onStart] User disconnected, can't process gift")
+                Toast.makeText(this,"Can't process contents of the gift! Check your internet" +
+                        " connection", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -105,7 +113,15 @@ class GiftActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        loadData()
+        if (isNetworkAvailable()) {
+            Log.d(TAG,"[onStart] User connected, load data as usual")
+            loadData()
+        }
+        else {
+            signOut()
+            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+                    "connection and log in again.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun loadData() {
@@ -146,5 +162,21 @@ class GiftActivity : AppCompatActivity() {
         dataString = gson.toJson(walletList)
         db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(WALLET_KEY,dataString)
         Log.d(TAG, "[onStop] Stored wallet as $dataString")
+    }
+
+    // Check if network connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
+    private fun signOut() {
+        Log.d(TAG,"[signOut] Signing out user")
+        mAuth.signOut()
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
     }
 }
