@@ -3,10 +3,14 @@ package com.example.minht.coinz
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.StyleSpan
 import android.util.Log
 import android.widget.ListView
 import android.widget.TextView
@@ -103,11 +107,19 @@ class GiftActivity : AppCompatActivity() {
     // Summary describing how many unopened gifts user has before listview
     private fun generateSummary() {
         val numGifts = giftList.size
+        val boldStyle = StyleSpan(Typeface.BOLD)
         if (numGifts != 0) {
-            giftState.text = "Unopened gifts: $numGifts / 10"
+            val giftText = "Unopened gifts:"
+            val giftMsg = "Unopened gifts: $numGifts / 10"
+            val spannableStringBuilder = SpannableStringBuilder(giftMsg)
+            spannableStringBuilder.setSpan(boldStyle,0,giftText.length,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
+            giftState.text = spannableStringBuilder
         }
         else {
-            giftState.text = "No gifts to open"
+            val giftText = "You don't have any gifts to open.\nTry sending your coins more often."
+            val spannableStringBuilder = SpannableStringBuilder(giftText)
+            spannableStringBuilder.setSpan(boldStyle,0,giftText.length,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
+            giftState.text = spannableStringBuilder
         }
     }
 
@@ -118,6 +130,7 @@ class GiftActivity : AppCompatActivity() {
             loadData()
         }
         else {
+            Log.d(TAG,"[onStart] User disconnected, sign out")
             signOut()
             Toast.makeText(this,"Can't communicate with server. Check your internet " +
                     "connection and log in again.", Toast.LENGTH_SHORT).show()

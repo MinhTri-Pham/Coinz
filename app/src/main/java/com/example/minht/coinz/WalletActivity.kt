@@ -322,11 +322,11 @@ class WalletActivity : AppCompatActivity() {
             }
         }
         val depositDesc : String
-        if (numCoins != 1) {
-            depositDesc = "Deposited $numCoins coins"
+        depositDesc = if (numCoins != 1) {
+            "Deposited $numCoins coins"
         }
         else {
-            depositDesc = "Deposited $numCoins coin"
+            "Deposited $numCoins coin"
         }
         numCoinsDeposited += numCoins
         val newBalance = bankAccount.balance + amount

@@ -36,7 +36,6 @@ class StatsActivity : AppCompatActivity() {
         mapsCompleted = intent.getIntExtra(NUM_MAP_COMPLETED_KEY,0)
         distWalked = intent.getDoubleExtra(DIST_KEY,0.0)
         calsBurned = intent.getDoubleExtra(CAL_KEY,0.0)
-
         // Display statistics
         // Make text bit bold for clarity
         val mapText = "Number of completed maps:"

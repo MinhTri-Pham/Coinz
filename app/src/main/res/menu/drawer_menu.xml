@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-<item android:id="@+id/wallet" android:title="Wallet"/>
-<item android:id="@+id/bank_account" android:title="Bank Account"/>
-<item android:id="@+id/gifts" android:title="Gifts"/>
-<item android:id="@+id/leaderboard" android:title="Leaderboard"/>
-<item android:id="@+id/stats" android:title="Statistics"/>
-<item android:id="@+id/sign_out" android:title="Sign Out"/>
+<item android:id="@+id/wallet"
+    android:title="Wallet"
+    android:icon="@drawable/ic_wallet_black_24dp"/>
+<item android:id="@+id/bank_account"
+    android:title="Bank Account"
+    android:icon="@drawable/ic_bank_black_24dp"/>
+<item android:id="@+id/gifts"
+    android:title="Gifts"
+    android:icon="@drawable/ic_gift_black_24dp"/>
+<item android:id="@+id/leaderboard"
+    android:title="Leaderboard"
+    android:icon="@drawable/ic_leaderboard_black_24dp"/>
+<item android:id="@+id/stats"
+    android:title="Statistics"
+    android:icon="@drawable/ic_stats_black_24dp"/>
+<item android:id="@+id/sign_out"
+    android:title="Sign Out"
+    android:icon="@drawable/ic_exit_to_app_black_24dp"/>
 </menu>

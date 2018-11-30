@@ -369,14 +369,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     }
 
     private fun getCollectionBonus() {
-        when {
-            userMapsCompleted < 10 -> collectionBonus = 100
-            userMapsCompleted < 50 -> collectionBonus = 400
-            userMapsCompleted < 100 -> collectionBonus = 700
-            userMapsCompleted < 250 -> collectionBonus = 1200
-            userMapsCompleted < 500 -> collectionBonus = 2000
-            userMapsCompleted < 1000 -> collectionBonus = 3500
-            else -> collectionBonus = 6000
+        collectionBonus = when {
+            userMapsCompleted < 10 -> 100
+            userMapsCompleted < 50 -> 400
+            userMapsCompleted < 100 -> 700
+            userMapsCompleted < 250 -> 1200
+            userMapsCompleted < 500 -> 2000
+            userMapsCompleted < 1000 -> 3500
+            else -> 6000
         }
         bonusInfo.text = "Current bonus: $collectionBonus GOLD"
     }
@@ -665,11 +665,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             // Recall map variables
             downloadDate = settings.getString(DOWNLOAD_DATE_KEY, "")
             mapString = settings.getString(MAP_KEY,"")
-            if (mapString == "") {
-                mapJson = JSONObject()
-            }
-            else {
-                mapJson = JSONObject(mapString)
+            mapJson = if (mapString == "") {
+                JSONObject()
+            } else {
+                JSONObject(mapString)
             }
             Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
             Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")

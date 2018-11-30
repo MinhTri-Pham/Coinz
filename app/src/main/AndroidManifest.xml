@@ -16,22 +16,22 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
-            android:label="Coinz"
+            android:label="Today's map"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".LoginActivity"
-            android:label="Coinz">
-
+            android:theme="@style/AppTheme.NoActionBar" >
             <!-- Set LoginActivity as the first activity launched -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".RegisterActivity"
-            android:label="Register" />
+            android:label="Register"
+            android:parentActivityName=".LoginActivity"
+            android:theme="@style/AppTheme.NoActionBar"/>
         <activity
             android:name=".WalletActivity"
             android:label="Wallet"
@@ -51,7 +51,7 @@
         <activity
             android:name=".StatsActivity"
             android:label="Stats"
-            android:parentActivityName=".MainActivity"/>
+            android:parentActivityName=".MainActivity" />
         <activity
             android:name=".ResetPasswordActivity"
             android:label="ResetPassword"

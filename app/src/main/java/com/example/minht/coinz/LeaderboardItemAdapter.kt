@@ -50,11 +50,11 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         // Bold text and special background if it's user
         if (leaderboardItem.isUser) {
             rankTextView.setTypeface(null,Typeface.BOLD)
-            rankTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+            rankTextView.setBackgroundColor(Color.parseColor("#a030559f"))
             usernameTextView.setTypeface(null,Typeface.BOLD)
-            usernameTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+            usernameTextView.setBackgroundColor(Color.parseColor("#a030559f"))
             scoreTextView.setTypeface(null,Typeface.BOLD)
-            scoreTextView.setBackgroundColor(Color.parseColor("#dcdcdc"))
+            scoreTextView.setBackgroundColor(Color.parseColor("#a030559f"))
         }
         return view
     }

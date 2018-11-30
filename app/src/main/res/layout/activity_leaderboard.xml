@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:layout_margin="8dp"
+    android:background="@color/colorPrimary"
     tools:context=".LeaderboardActivity">
 
     <TextView
@@ -15,7 +15,7 @@
         android:text="Your info:"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
     <include layout = "@layout/leaderboard_header" />
     <include layout = "@layout/player_leader_item" />
@@ -27,7 +27,7 @@
         android:padding="12dp"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
     <include layout = "@layout/leaderboard_header" />
 

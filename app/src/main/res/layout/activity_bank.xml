@@ -4,23 +4,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@color/colorPrimary"
     tools:context=".BankActivity">
     
     <TextView
         android:id = "@+id/usernameSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp"
+        android:padding="10dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
     <TextView
         android:id = "@+id/balanceSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp"
+        android:padding="10dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
     <TextView
         android:id = "@+id/displayPeriodDesc"
@@ -29,24 +30,26 @@
         android:text = "Display period"
         android:padding="12dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textStyle="bold"
+        android:textColor="@color/black"/>
 
     <Spinner
         android:id="@+id/displayPeriodSpinner"
-        android:padding="12dp"
+        android:padding="10dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="15sp"
-        android:textColor="@android:color/background_dark">
+        android:textColor="@color/black">
     </Spinner>
 
     <TextView
         android:id = "@+id/transfersDesc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp"
+        android:padding="10dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@android:color/background_dark"
+        android:textStyle="bold"/>
 
     <include layout = "@layout/bank_header" />
 
