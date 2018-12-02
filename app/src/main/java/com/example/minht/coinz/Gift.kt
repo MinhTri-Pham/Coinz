@@ -21,8 +21,12 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
         return true
     }
 
-    fun shortDescription(): String{
-        return "$date: $from sent you ${contents.size} coins!"
+    fun shortDescription(): String {
+        val numCoins = contents.size
+        if (numCoins != 1) {
+            return "$date: $from sent you ${contents.size} coins!"
+        }
+        return "$date: $from sent you 1 coin!"
     }
 
     // Build newline separated message showing currency and value of each coin in the gift

@@ -1,6 +1,7 @@
 package com.example.minht.coinz
 
- class Coin (var id: String, val currency: String, val valueInGold: Double, var selected: Boolean) {
+ class Coin (var id: String, val currency: String, val valueInGold: Double,
+             var selected: Boolean, var collected: Boolean) {
 
      override fun hashCode(): Int {
          var result = 17

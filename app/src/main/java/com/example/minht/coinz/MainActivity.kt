@@ -21,6 +21,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 //import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -151,10 +152,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         mAuth = FirebaseAuth.getInstance()
         uid = mAuth.uid!!
         db = FirebaseFirestore.getInstance()
-//        val settings = FirebaseFirestoreSettings.Builder()
-//                .setTimestampsInSnapshotsEnabled(true)
-//                .build()
-//        db.firestoreSettings = settings
+        val settings = FirebaseFirestoreSettings.Builder()
+                .setTimestampsInSnapshotsEnabled(true)
+                .build()
+        db.firestoreSettings = settings
         setUpNavDrawer()
         Mapbox.getInstance(this, getString(R.string.access_token))
         // Map info views
@@ -180,18 +181,34 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val navUsernameText = headerView.findViewById(R.id.nav_text_username) as TextView
         val navEmailText = headerView.findViewById(R.id.nav_text_email) as TextView
         val userRef = db.collection(COLLECTION_KEY).document(uid)
-        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
-            if (documentSnapshot!!.exists()) {
-                userName = documentSnapshot.getString(USERNAME_KEY)!!
-                val email = documentSnapshot.getString(EMAIL_KEY)
+//        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
+//            if (documentSnapshot!!.exists()) {
+//                userName = documentSnapshot.getString(USERNAME_KEY)!!
+//                val email = documentSnapshot.getString(EMAIL_KEY)
+//                val usernameText = "Welcome back $userName!"
+//                navUsernameText.text = usernameText
+//                navEmailText.text = email
+//                Log.d(TAG,"[onCreate] Created welcome message")
+//            } else {
+//                Log.d(TAG,"[onCreate] User document not found")
+//            }
+//        }
+        userRef.get().addOnCompleteListener {task: Task<DocumentSnapshot> ->
+            if (task.isSuccessful) {
+                userName = task.result!!.getString(USERNAME_KEY)!!
+                val email = task.result!!.getString(EMAIL_KEY)
                 val usernameText = "Welcome back $userName!"
                 navUsernameText.text = usernameText
                 navEmailText.text = email
                 Log.d(TAG,"[onCreate] Created welcome message")
-            } else {
-                Log.d(TAG,"[onCreate] User document not found")
+            }
+            else {
+                val message = task.exception!!.message
+                Log.d(TAG, "Error getting data")
+                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
             }
         }
+
         navigationView.setNavigationItemSelectedListener(this)
     }
 
@@ -241,24 +258,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         else {
                             Log.d(TAG,"[onMapReady] First time playing today, resetting values")
                             updateDailyValues(userDocRef,currDate)
-//                            visitedMarkerSet = mutableSetOf()
-//                            numCollectCoins = 0
-//                            numDepositCoins = 0
-//                            userDocRef.update(LAST_PLAY_KEY, currDate)
-//                            userDocRef.update(VISITED_MARKERS_KEY, gson.toJson(visitedMarkerSet))
-//                            userDocRef.update(NUM_COINS_KEY,numCollectCoins)
-//                            userDocRef.update(NUM_DEPOSIT_KEY,numDepositCoins)
                         }
                         // Download map if necessary
                         if (currDate == downloadDate) {
-                            // Today's map has been downloaded and stored in Shared Preferences, render markers directly
+//                          Today's map has been downloaded and stored in Shared Preferences, render markers directly
                             Log.d(TAG,"[onMapReady] Map has already been downloaded today, rendering markers directly")
                             renderJson(map,mapJson)
                             mapDate.text = "Map date: $currDate"
-                            penyInfo.text = "PENY: ${String.format("%.3f",penyRate)}"
-                            dolrInfo.text = "DOLR: ${String.format("%.3f",dolrRate)}"
-                            quidInfo.text = "QUID: ${String.format("%.3f",quidRate)}"
-                            shilInfo.text = "SHIL: ${String.format("%.3f",shilRate)}"
+                            penyInfo.text = "PENY: ${String.format("%.2f",penyRate)}"
+                            dolrInfo.text = "DOLR: ${String.format("%.2f",dolrRate)}"
+                            quidInfo.text = "QUID: ${String.format("%.2f",quidRate)}"
+                            shilInfo.text = "SHIL: ${String.format("%.2f",shilRate)}"
 
                         } else {
                             // First time today's map is used, need to download it
@@ -475,8 +485,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             // Check internet connection
             if (!isNetworkAvailable() && !connectionFlag) {
                 Log.d(TAG,"[onLocationChanged] User disconnected, disable app")
-                Toast.makeText(this, "No connection found. Coins can't be collected and " +
-                        "switching to activities will lead to an automatic log off unless you connect again.",
+                Toast.makeText(this, "No connection found, collection is disabled. Check your internet collection.",
                         Toast.LENGTH_SHORT).show()
                 connectionFlag = true
             }
@@ -502,7 +511,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     map!!.removeMarker(marker)
                     Log.d(TAG, "[onLocationChanged] Coin $markerId of ${marker.snippet} with value ${marker.title} removed from map")
                     visitedMarkerSet.add(markerId)
-                    val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false)
+                    val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false,true)
                     // If user already contains coin with same id, create a new unique id for it
                     // Important for actions with coins (transfer/deposit)
                     if (walletList.contains(coin)) {
@@ -530,7 +539,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 400
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("\nYou've completed your 10th map!\n" +
                                         "You now get a bigger reward of $collectionBonus coins.\n" +
@@ -541,7 +550,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 700
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("\nYou've completed your 50th map!\n" +
                                         "You now get a bigger reward of $collectionBonus GOLD.\n" +
@@ -552,7 +561,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 1200
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("\nYou've completed your 100th map!\n" +
                                         "You now get a bigger reward of $collectionBonus GOLD.\n" +
@@ -563,7 +572,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 2000
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("\nYou've completed your 250th map!\n" +
                                         "You now get a bigger reward of $collectionBonus GOLD." +
@@ -574,7 +583,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 3500
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("\nYou've completed your 500th map!\n" +
                                         "You now get a bigger reward $collectionBonus GOLD.\n" +
@@ -585,7 +594,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 collectionBonus = 6000
                                 Log.d(TAG, "[onLocationChanged] Collection bonus increased to " +
                                         "$collectionBonus")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("You've completed your 1000th map!\n" +
                                         "You now receive the maximum collection bonus $collectionBonus GOLD\n" +
@@ -595,7 +604,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             else -> {
                                 Log.d(TAG, "[onLocationChanged] No milestone, collection bonus " +
                                         "stays $collectionBonus GOLD")
-                                val bonusInfo = AlertDialog.Builder(this)
+                                val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
                                 bonusInfo.setMessage("You've completed today's map! As a reward,\n" +
                                         "you receive a collection bonus $collectionBonus GOLD")
@@ -711,24 +720,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             locationEngine!!.removeLocationEngineListener(this)
             locationEngine!!.removeLocationUpdates()
         }
-//        mapString = mapJson.toString()
-//        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-//        val editor = settings.edit()
-        // Store map downloading values in Shared Preferences
-//        editor.putString(DOWNLOAD_DATE_KEY, downloadDate)
-//        editor.putString(MAP_KEY,mapString)
-//        Log.d(TAG, "[onStop] Stored lastDownloadDate as $downloadDate")
-//        Log.d(TAG, "[onStop] Stored lastCoinMap as $mapString")
-        // Store exchange rates in Shared Preferences
-//        editor.putString("penyRate", penyRate.toString())
-//        editor.putString("dolrRate", dolrRate.toString())
-//        editor.putString("quidRate", quidRate.toString())
-//        editor.putString("shilRate", shilRate.toString())
-//        Log.d(TAG,"[onStop] Stored rate of PENY as $penyRate")
-//        Log.d(TAG, "[onStop] Stored rate of DOLR as $dolrRate")
-//        Log.d(TAG, "[onStop] Stored rate of QUID as $quidRate")
-//        Log.d(TAG, "[onStop] Stored rate of SHIL as $shilRate")
-//        editor.apply()
     }
 
     // Store user data in Firestore
@@ -813,6 +804,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 //                    userScore = 0.0
 //                    userDist = 0.0
 //                    userCals = 0.0
+//                    userMapsCompleted = 0
+//                    collectionBonus = 100
                     // Goes wrong
                 }
                 else {
@@ -820,8 +813,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Log.d(TAG,"[loadData] couldn't find document $uid")
                 }
             } else {
-                Log.d(TAG,"[loadData] Failed to load data")
-                Toast.makeText(this, "Failed to load your data, check your internet connection!", Toast.LENGTH_SHORT).show()
+                Log.d(TAG,"[loadData] Error when loading data")
+                val message = task.exception!!.message
+                Toast.makeText(this, "Error occurred when loading data: $message", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -909,7 +903,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             //Signs out current user upon confirmation and returns him to Log in screen
             R.id.sign_out -> {
                 // Confirmation dialog for user to confirm this action
-                val confirmSignOut = AlertDialog.Builder(this)
+                val confirmSignOut = AlertDialog.Builder(this,R.style.MyDialogTheme)
                 confirmSignOut.setTitle("Confirm sign out")
                 confirmSignOut.setMessage("Are you sure that you want to sign out from the game?")
                 confirmSignOut.setCancelable(false)

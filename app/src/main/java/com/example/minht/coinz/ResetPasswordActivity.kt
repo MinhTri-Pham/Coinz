@@ -3,6 +3,7 @@ package com.example.minht.coinz
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -14,6 +15,10 @@ class ResetPasswordActivity : AppCompatActivity() {
     private lateinit var emailEditText: EditText
     private lateinit var sendLinkButton: Button
     private lateinit var mAuth: FirebaseAuth
+
+    companion object {
+        const val TAG = "ResetPasswordActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +37,7 @@ class ResetPasswordActivity : AppCompatActivity() {
                     }
                     else {
                         val message = task.exception!!.message
+                        Log.d(TAG, "Error getting data")
                         Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
                     }
                 }

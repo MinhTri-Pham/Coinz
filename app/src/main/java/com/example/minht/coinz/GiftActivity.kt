@@ -59,7 +59,7 @@ class GiftActivity : AppCompatActivity() {
                     Log.d(TAG, "[onCreate] Can't open gift, since there's not enough space in the wallet")
                 }
                 else {
-                    val giftPrompt = AlertDialog.Builder(this)
+                    val giftPrompt = AlertDialog.Builder(this,R.style.MyDialogTheme)
                     val giftMsg = "Confirm opening gift with contents:\n\n" + selectedGift.showContents()
                     giftPrompt.setTitle("Gift confirmation").setMessage(giftMsg).setCancelable(false)
                     giftPrompt.setPositiveButton("Open gift") { _: DialogInterface?, _: Int ->

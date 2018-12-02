@@ -59,7 +59,7 @@ class BankActivity : AppCompatActivity() {
         // Show info message with details of transaction
         transferList.setOnItemClickListener{_,_,pos,_ ->
             val selectedTransfer = displayBankTransfers[pos]
-            val transferInfo = AlertDialog.Builder(this)
+            val transferInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
             transferInfo.setCancelable(true).setTitle("Transaction detail").setMessage(selectedTransfer.showDetails())
             transferInfo.show()
         }

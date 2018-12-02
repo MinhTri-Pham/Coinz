@@ -3,11 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:layout_marginEnd="8dp"
-    android:layout_marginStart="8dp"
-    android:layout_marginTop="8dp"
+    android:layout_height="match_parent"
+    android:background="@color/colorPrimary"
     android:orientation="vertical"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
@@ -19,65 +16,44 @@
         android:id="@+id/wallet_state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
+        android:layout_margin="6dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
     <TextView
         android:id="@+id/deposit_state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
+        android:layout_margin="6dp"
         android:textSize="18sp"
-        android:textColor="@android:color/background_dark"/>
+        android:textColor="@color/black"/>
 
-    <LinearLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal" >
+        android:layout_margin="6dp"
+        android:textSize="18sp"
+        android:text="Current exchange rates"
+        android:textStyle="bold"
+        android:textColor="@color/black"/>
 
-        <Button
-            android:id="@+id/transfer_coins_button"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            android:text="Transfer coins" />
+    <include layout="@layout/rates" />
+    <include layout="@layout/wallet_buttons"/>
 
-        <Button
-            android:id="@+id/deposit_coins_button"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            android:text="Deposit coins" />
-
-    </LinearLayout>
-
-    <LinearLayout
+    <TextView
+        android:id="@+id/coinListDesc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal" >
-
-        <Button
-            android:id="@+id/select_all_button"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            android:text="Select all" />
-
-        <Button
-            android:id="@+id/deselect_all_button"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            android:text="Deselect all" />
-
-    </LinearLayout>
+        android:layout_margin="6dp"
+        android:textSize="18sp"
+        android:textColor="@color/black"/>
 
     <ListView
-        android:id="@+id/coins_checkable_list"
+        android:id="@+id/coin_checkable_list"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="15dp" >
+        android:background="@color/colorPrimary"
+        android:layout_margin="6dp" >
     </ListView>
 
 </LinearLayout>

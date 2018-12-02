@@ -47,14 +47,17 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         usernameTextView.text = leaderboardItem.username
         rankTextView.text = leaderboardItem.rank.toString()
         scoreTextView.text = String.format("%.2f",leaderboardItem.score)
-        // Bold text and special background if it's user
+        // Bold text and special text color/background if it's user
         if (leaderboardItem.isUser) {
             rankTextView.setTypeface(null,Typeface.BOLD)
             rankTextView.setBackgroundColor(Color.parseColor("#a030559f"))
+            rankTextView.setTextColor(Color.parseColor("#fafafa"))
             usernameTextView.setTypeface(null,Typeface.BOLD)
             usernameTextView.setBackgroundColor(Color.parseColor("#a030559f"))
+            usernameTextView.setTextColor(Color.parseColor("#fafafa"))
             scoreTextView.setTypeface(null,Typeface.BOLD)
             scoreTextView.setBackgroundColor(Color.parseColor("#a030559f"))
+            scoreTextView.setTextColor(Color.parseColor("#fafafa"))
         }
         return view
     }

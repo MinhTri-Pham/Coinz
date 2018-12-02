@@ -1,6 +1,7 @@
 package com.example.minht.coinz
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -41,6 +42,9 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
         Log.d(TAG,"[getView] Make entry for coin")
         val coin = dataSource[position]
         holder.coinSummary!!.text = coin.toString()
+        if (!coin.collected) {
+            holder.coinSummary!!.setTypeface(null, Typeface.ITALIC)
+        }
         holder.coinCheckBox!!.isChecked = coin.selected
         holder.coinCheckBox!!.setTag(R.integer.btnplusview,view)
         holder.coinCheckBox!!.tag = position
