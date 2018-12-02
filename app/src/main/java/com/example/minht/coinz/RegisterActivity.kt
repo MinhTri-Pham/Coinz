@@ -83,9 +83,9 @@ class RegisterActivity : AppCompatActivity() {
     // Invoked when user presses the Log in button
     // If credentials correct, Log In screen opens, otherwise user is warned to change input
     private fun registerUser() {
-        usernameText = findViewById<View>(R.id.editUsername) as EditText
-        emailText = findViewById<View>(R.id.editTextEmail) as EditText
-        passwordText = findViewById<View>(R.id.editTextPassword) as EditText
+        usernameText = findViewById<View>(R.id.editUsernameRegister) as EditText
+        emailText = findViewById<View>(R.id.editTextEmailRegister) as EditText
+        passwordText = findViewById<View>(R.id.editTextPasswordRegister) as EditText
 
         val username = usernameText.text.toString()
         val email = emailText.text.toString()
@@ -127,7 +127,7 @@ class RegisterActivity : AppCompatActivity() {
                                 user[NUM_COINS_KEY] = 0
                                 user[NUM_DEPOSIT_KEY] = 0
                                 user[DAILY_BONUS_KEY] = false
-                                // Update Firestore
+                                // Update Firestore and user count
                                 db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
                                     Log.d(TAG,"[registerUser] Created new user")
                                     Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
@@ -140,6 +140,7 @@ class RegisterActivity : AppCompatActivity() {
                                     editor.putInt(NUM_PLAYERS_KEY,numPlayers)
                                     editor.apply()
                                     Log.d(TAG,"[registerUser] Updated number of players to $numPlayers")
+                                    startActivity(Intent(this,LoginActivity::class.java))
 
                                 }
                             } else {
