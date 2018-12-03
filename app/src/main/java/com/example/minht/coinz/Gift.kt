@@ -35,6 +35,7 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
         for (coin in contents) {
             builder.append(coin.toString()).append('\n')
         }
-        return builder.toString()
+        val string =  builder.toString()
+        return string.substring(0,string.length-1) // Remove last newline character
     }
 }

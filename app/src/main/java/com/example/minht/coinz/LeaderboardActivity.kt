@@ -38,7 +38,7 @@ class LeaderboardActivity : AppCompatActivity() {
     companion object {
         const val PREFS_FILE = "MyPrefsFile" // Storing data
         const val TAG = "LeaderboardActivity" // Debugging purposes
-        const val DEFAULT_DISPLAY_NUM = 3
+        const val DEFAULT_DISPLAY_NUM = 10
         // Keys in Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY= "Username"
@@ -86,7 +86,8 @@ class LeaderboardActivity : AppCompatActivity() {
     private fun generateLeaderboard() {
         // First need total number of user of the app
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        val numPlayers = settings.getInt(NUM_PLAYERS_KEY,1)
+        var numPlayers = settings.getInt(NUM_PLAYERS_KEY,1)
+        numPlayers = 5
         Log.d(TAG,"[generateLeaderboard] There are $numPlayers players")
         val usersRef = db.collection(COLLECTION_KEY)
         // If less users than default number, only display that number of items

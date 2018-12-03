@@ -181,18 +181,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val navUsernameText = headerView.findViewById(R.id.nav_text_username) as TextView
         val navEmailText = headerView.findViewById(R.id.nav_text_email) as TextView
         val userRef = db.collection(COLLECTION_KEY).document(uid)
-//        userRef.get().addOnSuccessListener { documentSnapshot: DocumentSnapshot? ->
-//            if (documentSnapshot!!.exists()) {
-//                userName = documentSnapshot.getString(USERNAME_KEY)!!
-//                val email = documentSnapshot.getString(EMAIL_KEY)
-//                val usernameText = "Welcome back $userName!"
-//                navUsernameText.text = usernameText
-//                navEmailText.text = email
-//                Log.d(TAG,"[onCreate] Created welcome message")
-//            } else {
-//                Log.d(TAG,"[onCreate] User document not found")
-//            }
-//        }
         userRef.get().addOnCompleteListener {task: Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
                 userName = task.result!!.getString(USERNAME_KEY)!!
@@ -208,7 +196,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
             }
         }
-
         navigationView.setNavigationItemSelectedListener(this)
     }
 
@@ -261,7 +248,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                         }
                         // Download map if necessary
                         if (currDate == downloadDate) {
-//                          Today's map has been downloaded and stored in Shared Preferences, render markers directly
+                            // Today's map has been downloaded and stored in Shared Preferences, render markers directly
                             Log.d(TAG,"[onMapReady] Map has already been downloaded today, rendering markers directly")
                             renderJson(map,mapJson)
                             mapDate.text = "Map date: $currDate"
