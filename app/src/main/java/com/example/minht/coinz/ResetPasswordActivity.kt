@@ -17,7 +17,7 @@ class ResetPasswordActivity : AppCompatActivity() {
     private lateinit var mAuth: FirebaseAuth
 
     companion object {
-        const val TAG = "ResetPasswordActivity"
+        const val TAG = "ResetPasswordActivity" // Logging purposes
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -25,10 +25,13 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
         return position.toLong()
     }
 
+    // Improve ListView performance using the ViewHolder pattern
+    // See report Acknowledgements for more details
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         var view = convertView
         val holder : ViewHolder
         if (view == null) {
+            // Check if view already exists
             holder = ViewHolder()
             val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             view = inflater.inflate(R.layout.wallet_row,null,true)
@@ -37,14 +40,18 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
             view.tag = holder
         }
         else {
+            // Skip inflation steps, get relevant subviews of row view immediately
             holder = view.tag as ViewHolder
         }
+        // Populate subviews
         Log.d(TAG,"[getView] Make entry for coin")
         val coin = dataSource[position]
         holder.coinSummary!!.text = coin.toString()
+        // Mark coins received from other players in italic
         if (!coin.collected) {
             holder.coinSummary!!.setTypeface(null, Typeface.ITALIC)
         }
+        // Keep track of which entries are selected
         holder.coinCheckBox!!.isChecked = coin.selected
         holder.coinCheckBox!!.setTag(R.integer.btnplusview,view)
         holder.coinCheckBox!!.tag = position
@@ -59,6 +66,7 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
         return view
     }
 
+    // Stores row's subviews
     private class ViewHolder {
         var coinCheckBox: CheckBox? = null
         var coinSummary: TextView? = null

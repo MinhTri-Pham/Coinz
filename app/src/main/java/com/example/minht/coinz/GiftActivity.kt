@@ -25,7 +25,7 @@ import java.util.*
 
 class GiftActivity : AppCompatActivity() {
 
-    private var walletList : ArrayList<Coin> = ArrayList()
+    private var walletList : ArrayList<Coin> = ArrayList()// User's wallet
     private var giftList : ArrayList<Gift> = ArrayList()
     private lateinit var giftState : TextView
     private lateinit var giftListView : ListView
@@ -34,12 +34,13 @@ class GiftActivity : AppCompatActivity() {
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
+    // constants
     companion object {
-        const val TAG = "GiftActivity" // Debugging purposes
+        const val TAG = "GiftActivity" // Logging purposes
         const val COLLECTION_KEY = "Users"
         const val WALLET_KEY = "Wallet"
         const val GIFTS_KEY = "Gifts"
-        const val MAX_COINS_LIMIT = 1000
+        const val MAX_COINS_LIMIT = 200 // Wallet size limit
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +59,7 @@ class GiftActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT).show()
                     Log.d(TAG, "[onCreate] Can't open gift, since there's not enough space in the wallet")
                 }
+                // Otherwise open dialog for user to confirm gift opening
                 else {
                     val giftPrompt = AlertDialog.Builder(this,R.style.MyDialogTheme)
                     val giftMsg = "Confirm opening gift with contents:\n\n" + selectedGift.showContents()
@@ -100,14 +102,15 @@ class GiftActivity : AppCompatActivity() {
         giftListView.adapter=giftAdapter
         Toast.makeText(this,"Gift opened!", Toast.LENGTH_SHORT).show()
         Log.d(TAG,"[openGift] Gift opened and contents added to wallet")
-        // Save data
+        // Save data into Firestore
         saveData()
     }
 
-    // Summary describing how many unopened gifts user has before listview
+    // Summary describing how many unopened gifts user has
     private fun generateSummary() {
         val numGifts = giftList.size
         val boldStyle = StyleSpan(Typeface.BOLD)
+        // Different summaries if user doesn't have any gifts / has some gifts
         if (numGifts != 0) {
             val giftText = "Unopened gifts:"
             val giftMsg = "Unopened gifts: $numGifts / 10"
@@ -125,6 +128,7 @@ class GiftActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Start as usual if network connection available, sign out otherwise
         if (isNetworkAvailable()) {
             Log.d(TAG,"[onStart] User connected, load data as usual")
             loadData()
@@ -137,6 +141,7 @@ class GiftActivity : AppCompatActivity() {
         }
     }
 
+    // Load user's gifts and wallet from Firestore
     private fun loadData() {
         // Get user document
         Log.d(TAG, "[loadData] Recalling wallet and gifts")
@@ -159,15 +164,15 @@ class GiftActivity : AppCompatActivity() {
                 giftListView.adapter=giftAdapter
             }
             else {
-                Log.d(TAG, "[loadData] Failed to load data")
-                Toast.makeText(this, "Failed to load your data, check your internet connection!", Toast.LENGTH_SHORT).show()
+                val message = task.exception!!.message
+                Log.d(TAG, "Error getting data")
+                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Saves data into Firestore
+    // Saves user's gifts and wallet into Firestore
     private fun saveData() {
-        // Update user's gifts and wallet
         val gson = Gson()
         var dataString = gson.toJson(giftList)
         db.collection(COLLECTION_KEY).document(mAuth.uid!!).update(GIFTS_KEY,dataString)
@@ -184,6 +189,7 @@ class GiftActivity : AppCompatActivity() {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 
+    // Sign out user if there's no network connection when the activity starts
     private fun signOut() {
         Log.d(TAG,"[signOut] Signing out user")
         mAuth.signOut()

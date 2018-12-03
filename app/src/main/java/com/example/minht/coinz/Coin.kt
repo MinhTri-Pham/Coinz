@@ -3,6 +3,7 @@ package com.example.minht.coinz
  class Coin (var id: String, val currency: String, val valueInGold: Double,
              var selected: Boolean, var collected: Boolean) {
 
+     // For equality
      override fun hashCode(): Int {
          var result = 17
          result = 31 * result + id.hashCode()
@@ -11,6 +12,7 @@ package com.example.minht.coinz
          return result
      }
 
+     // Equality based on id
      override fun equals(other: Any?): Boolean {
          if (other !is Coin) {
              return false
@@ -19,5 +21,6 @@ package com.example.minht.coinz
          }
      }
 
+     // For display/debugging purposes
      override fun toString() : String =  "$currency, Value: $valueInGold"
 }

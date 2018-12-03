@@ -36,10 +36,10 @@ class LeaderboardActivity : AppCompatActivity() {
     private lateinit var userScoreTextView: TextView
 
     companion object {
-        const val PREFS_FILE = "MyPrefsFile" // Storing data
-        const val TAG = "LeaderboardActivity" // Debugging purposes
-        const val DEFAULT_DISPLAY_NUM = 10
-        // Keys in Firestore
+        const val PREFS_FILE = "MyPrefsFile"
+        const val TAG = "LeaderboardActivity" // LOgging purposes
+        const val DEFAULT_DISPLAY_NUM = 100 // How many top players are displayed
+        // Keys in Intent/Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY= "Username"
         const val SCORE_KEY = "Score"
@@ -61,6 +61,7 @@ class LeaderboardActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Get data passed from map
         val bundle = intent.extras
         userName= bundle.getString(USERNAME_KEY)
         userScore = bundle.getDouble(SCORE_KEY)
@@ -69,6 +70,7 @@ class LeaderboardActivity : AppCompatActivity() {
         Log.d(TAG, "[onStart] Username of current user: $userName")
         Log.d(TAG, "[onStart] Score of current user: $userScore")
         cleanUp()
+        // Generate leaderboard as usual if network connection available, otherwise sign out immediately
         if (isNetworkAvailable()) {
             Log.d(TAG, "[onStart] User connected, start as usual")
             generateLeaderboard()
@@ -84,33 +86,35 @@ class LeaderboardActivity : AppCompatActivity() {
     // Generate current leaderboard
     // Read Firestore, order by score field
     private fun generateLeaderboard() {
-        // First need total number of user of the app
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        var numPlayers = settings.getInt(NUM_PLAYERS_KEY,1)
-        numPlayers = 5
+        val numPlayers = settings.getInt(NUM_PLAYERS_KEY,1) // Extract total number of players
         Log.d(TAG,"[generateLeaderboard] There are $numPlayers players")
         val usersRef = db.collection(COLLECTION_KEY)
-        // If less users than default number, only display that number of items
+        // If less players than default display number, only display that number of players
         if (numPlayers < numDisplayItems) {
             numDisplayItems = numPlayers
-            Log.d(TAG,"[generateLeaderboard] Less players than default number of items to be displayed. Only displaying $numDisplayItems items.")
+            Log.d(TAG,"[generateLeaderboard] Less players than default number of items" +
+                    " to be displayed. Only displaying $numDisplayItems items.")
         }
         scoreTextView.text = "Top $numDisplayItems players:"
+        // Get documents, sorted by score field in descending order
         usersRef.orderBy(SCORE_KEY, Query.Direction.DESCENDING).limit(numDisplayItems.toLong())
                 .get().addOnCompleteListener{task : Task<QuerySnapshot> ->
                     if (task.isSuccessful) {
-                        val docs = task.result!!.documents // Documents of top players
-                        var rank = 1
+                        val docs = task.result!!.documents
+                        var rank = 1 // Keep track of current rank
                         for (doc in docs) {
                             val username = doc.getString(USERNAME_KEY)
                             val score = doc.getDouble(SCORE_KEY)
                             if (username == null || score == null) {
                                 Log.d(TAG,"[generateLeaderboard] Document malformed")
-                                //Toast.makeText(this,"Error loading data", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this,"Error loading data", Toast.LENGTH_SHORT).show()
                                 continue
                             }
                             else {
                                 var leaderBoardItem:LeaderboardItem?
+                                // If current user found, we know his rank
+                                // Use it to fill user's info
                                 if (username == userName) {
                                     Log.d(TAG,"[generateLeaderboard] Current user found")
                                     leaderBoardItem = LeaderboardItem(rank,username,score, true)
@@ -146,12 +150,13 @@ class LeaderboardActivity : AppCompatActivity() {
                 }
     }
 
-    // Find rank of current user
-    // Used when user not in top list
+    // Find rank of current user, if user not in top players
     private fun findUserRank() {
         val usersRef = db.collection(COLLECTION_KEY)
         usersRef.whereGreaterThan(SCORE_KEY,userScore).get().addOnCompleteListener{task : Task<QuerySnapshot> ->
             if (task.isSuccessful) {
+                // Compute number of documents where score is greater than user's score
+                // Rank is this number + 1
                 val rank = task.result!!.documents.size + 1
                 userRankTextView.text = rank.toString()
                 Log.d(TAG,"[findUserRank] User's rank is $rank")
@@ -167,8 +172,8 @@ class LeaderboardActivity : AppCompatActivity() {
 
     // Clean up resources from previous session
     private fun cleanUp() {
-        leaderboard.clear() // Reset leaderboard
-        numDisplayItems = DEFAULT_DISPLAY_NUM // Reset number of displayed items to default
+        leaderboard.clear()
+        numDisplayItems = DEFAULT_DISPLAY_NUM
         userRank = -1
     }
 
@@ -179,7 +184,7 @@ class LeaderboardActivity : AppCompatActivity() {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 
-    // Sign out if user not connected to internet when activity started
+    // Sign out user if no network connection available when activity launched
     private fun signOut() {
         Log.d(TAG,"[signOut] Signing out user $userName")
         mAuth.signOut()

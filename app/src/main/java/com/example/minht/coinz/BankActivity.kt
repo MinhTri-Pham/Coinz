@@ -30,17 +30,19 @@ class BankActivity : AppCompatActivity() {
     private lateinit var transferList : ListView
 
     // Bank account and display period
-    private lateinit var bankAdapter : BankAdapter // Variable to display bank transfers
+    private lateinit var bankAdapter : BankAdapter
     private lateinit var bankAccount: BankAccount
-    private var displayPeriod = 7 // Number of days within which bank transfers are displayed
+    private var displayPeriod = 7 // Number of days within which bank transfers are displayed, week by default
     private lateinit var displayPeriodSpinner : Spinner
     private var displayBankTransfers : ArrayList<BankTransfer> = ArrayList() // Bank transfers that are displayed
+
     // Other general variables for database
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
+    // constants
     companion object {
-        const val TAG = "BankActivity" // For logging purposes
+        const val TAG = "BankActivity" // Logging purposes
         // For accessing data in Firestore
         const val COLLECTION_KEY = "Users"
         const val BANK_ACCOUNT_KEY = "Bank"
@@ -56,7 +58,7 @@ class BankActivity : AppCompatActivity() {
         transferDesc = findViewById(R.id.transfersDesc)
         displayPeriodSpinner = findViewById(R.id.displayPeriodSpinner)
         transferList = findViewById(R.id.transfersList)
-        // Show info message with details of transaction
+        // Show info message with details of transaction when clicked
         transferList.setOnItemClickListener{_,_,pos,_ ->
             val selectedTransfer = displayBankTransfers[pos]
             val transferInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
@@ -105,12 +107,13 @@ class BankActivity : AppCompatActivity() {
                 }
                 else {
                     Log.d(TAG,"[initSpinner] User disconnected, nothing to display")
-                    Toast.makeText(this@BankActivity,"Can't load transactions! " +
-                            "Check your internet connection", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@BankActivity,"Can't load transactions, " +
+                            "check your internet connection!", Toast.LENGTH_SHORT).show()
                 }
                 bankAdapter = BankAdapter(this@BankActivity,displayBankTransfers)
                 transferList.adapter = bankAdapter
             }
+
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 Toast.makeText(this@BankActivity, "Please select one option", Toast.LENGTH_SHORT).show()
@@ -122,16 +125,16 @@ class BankActivity : AppCompatActivity() {
     private fun filterTransfers() {
         val now = Date() // Current time
         val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-        bankAccount.bankTransfers.reverse() // By construction, transfers are oldest to latest, so reverse
+        bankAccount.bankTransfers.reverse() // By construction, transfers are oldest to latest
+        // Iterate through transactions, calculating day difference from today
         for (bankTransfer in bankAccount.bankTransfers) {
             val dateString = bankTransfer.date
             val date = sdf.parse(dateString)
-            val diffDays = (now.time - date.time) / (1000*60*60*24) // Count today as one day as well
-            if (diffDays < displayPeriod) {
+            val diffDays = (now.time - date.time) / (1000*60*60*24)
+            if (diffDays < displayPeriod) { // Count today as one day as well
                 displayBankTransfers.add(bankTransfer)
             }
-            // If a bank transfer before period found, terminate
-            // Since all other transfers will have later date than this one
+            // If a transaction before period found, all other transactions are outside as well
             else {
                 break
             }
@@ -141,6 +144,7 @@ class BankActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Start as usual if network connection available, otherwise sign out immediately
         if (isNetworkAvailable()) {
             // Load data if network connection available
             Log.d(TAG,"[onStart] User connected, start as usual")
@@ -151,7 +155,7 @@ class BankActivity : AppCompatActivity() {
                     Log.d(TAG, "[onStart] loaded bank account as $dataString")
                     val gson = Gson()
                     bankAccount = gson.fromJson(dataString, BankAccount::class.java)
-                    // Load views, make text parts bold
+                    // Load textual summaries, make text parts bold
                     val usernameText = "Account owner:"
                     val balanceText = "Current balance:"
                     val usernameMsg = "Account owner: " + bankAccount.owner
@@ -172,7 +176,7 @@ class BankActivity : AppCompatActivity() {
             }
         }
         else {
-            // Sign out user if no network connection
+            // Sign out user if no network connection when activity starts
             Log.d(TAG,"[onStart] User disconnected, can't load data")
             signOut()
             Toast.makeText(this,"Can't communicate with server. Check your internet " +
@@ -187,6 +191,7 @@ class BankActivity : AppCompatActivity() {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 
+    // Sign out user if no network connection available when activity launched
     private fun signOut() {
         Log.d(TAG,"[signOut] Signing out user")
         mAuth.signOut()

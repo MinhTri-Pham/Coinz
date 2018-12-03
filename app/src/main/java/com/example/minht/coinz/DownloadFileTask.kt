@@ -9,6 +9,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
+// Asynchronously downloads Geo-JSON map from server
 class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTask<String,Void,JSONObject>(){
 
     override fun doInBackground(vararg urls: String): JSONObject = try {
@@ -17,17 +18,17 @@ class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTa
         JSONObject()
     }
 
+    // Gives a JSON object from the download URL
     private fun loadFileFromNetwork(urlString: String) : JSONObject {
         val stream : InputStream = downloadUrl(urlString)
         val result = StringBuilder()
-        // Create a reader and read line by line
+        // Build data line by line
         val reader = BufferedReader(InputStreamReader(stream))
         var line = reader.readLine()
         while (line != null) {
             result.append(line)
             line = reader.readLine()
         }
-        //return result.toString()
         return JSONObject(result.toString())
     }
 
@@ -44,6 +45,7 @@ class DownloadFileTask (private val caller : DownloadCompleteListener) : AsyncTa
         return conn.inputStream
     }
 
+    // Notify when download complete
     override fun onPostExecute(result: JSONObject) {
         super.onPostExecute(result)
         caller.downloadComplete(result)

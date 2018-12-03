@@ -25,9 +25,8 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var forgotLink : TextView
 
     companion object {
-        const val TAG = "LoginActivity"
+        const val TAG = "LoginActivity" // For debugging purposes
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,8 +34,8 @@ class LoginActivity : AppCompatActivity() {
 
         mAuth = FirebaseAuth.getInstance()
         loginButton = findViewById(R.id.loginButton)
-        // Handle login button and register link click
         loginButton.setOnClickListener{ _ ->
+            // Warn user if no network connection
             if (isNetworkAvailable()) {
                 Log.d(TAG,"[onCreate] User connected, can proceed with log in")
                 loginUser()
@@ -56,21 +55,13 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    // Check if internet connection is available
-    private fun isNetworkAvailable() : Boolean {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetworkInfo = connectivityManager.activeNetworkInfo
-        return activeNetworkInfo != null && activeNetworkInfo.isConnected
-    }
-
-    // Invoked when user presses the Log in button
     // If credentials correct, Map view opens, otherwise user is warned to change input
     private fun loginUser() {
         emailText = findViewById<View>(R.id.editTextEmail) as EditText
         passwordText = findViewById<View>(R.id.editTextPassword) as EditText
+        // Extract credentials
         val email = emailText.text.toString()
         val password = passwordText.text.toString()
-        // Check if email and password text fields are empty
         if (!email.isEmpty() && !password.isEmpty()) {
             // Check validity of credentials, warn user if invalid
             mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener{task: Task<AuthResult> ->
@@ -86,7 +77,14 @@ class LoginActivity : AppCompatActivity() {
         // If credentials empty warn user about this
         } else {
             Log.d(TAG, "[loginUser] Authentication failed since credentials were incorrect")
-            Toast.makeText(this, "Please fill the credentials",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please fill all credentials",Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 }

@@ -25,10 +25,13 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         return pos.toLong()
     }
 
+    // Improve ListView performance using the ViewHolder pattern
+    // See report Acknowledgements for more details
     override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
         val view : View
         val holder: ViewHolder
         if (convertView == null) {
+            // Check if view already exists
             view = inflater.inflate(R.layout.leaderboard_row, parent,false)
             holder = ViewHolder()
             holder.rankTextView = view.findViewById(R.id.rankLeaderItem) as TextView
@@ -37,9 +40,11 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
             view.tag = holder
         }
         else {
+            // Skip inflation steps, get relevant subviews of row view immediately
             view = convertView
             holder = convertView.tag as ViewHolder
         }
+        // Populate subviews
         val rankTextView = holder.rankTextView
         val usernameTextView = holder.usernameTextView
         val scoreTextView = holder.scoreTextView
@@ -47,7 +52,7 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         usernameTextView.text = leaderboardItem.username
         rankTextView.text = leaderboardItem.rank.toString()
         scoreTextView.text = String.format("%.2f",leaderboardItem.score)
-        // Bold text and special text color/background if it's user
+        // Bold text and special text color/background if current user
         if (leaderboardItem.isUser) {
             rankTextView.setTypeface(null,Typeface.BOLD)
             rankTextView.setBackgroundColor(Color.parseColor("#a030559f"))
@@ -62,6 +67,7 @@ class LeaderboardItemAdapter(context: Context, private val dataSource: ArrayList
         return view
     }
 
+    // Stores row's subviews
     private class ViewHolder {
         lateinit var rankTextView : TextView
         lateinit var usernameTextView : TextView

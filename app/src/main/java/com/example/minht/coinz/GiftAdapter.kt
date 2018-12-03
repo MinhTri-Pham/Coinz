@@ -23,25 +23,30 @@ class GiftAdapter (context: Context, private val dataSource: ArrayList<Gift>) : 
         return pos.toLong()
     }
 
+    // Improve ListView performance using the ViewHolder pattern
+    // See report Acknowledgements for more details
     override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
         val view : View
         val holder: ViewHolder
         if (convertView == null) {
+            // Check if view already exists
             view = inflater.inflate(R.layout.gift_row, parent,false)
             holder = ViewHolder()
             holder.giftSummaryTextView = view.findViewById(R.id.giftSummary) as TextView
             view.tag = holder
         }
         else {
+            // Skip inflation steps, get relevant subviews of row view immediately
             view = convertView
             holder = convertView.tag as ViewHolder
         }
+        // Populate subviews
         val giftSummary = holder.giftSummaryTextView
         val gift = getItem(pos) as Gift
         giftSummary.text = gift.shortDescription()
         return view
     }
-
+    // Stores row's subviews
     private class ViewHolder {
         lateinit var giftSummaryTextView : TextView
     }

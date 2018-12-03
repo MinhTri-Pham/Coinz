@@ -33,11 +33,11 @@ class StatsActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Extract data passed from MainActivity
         mapsCompleted = intent.getIntExtra(NUM_MAP_COMPLETED_KEY,0)
         distWalked = intent.getDoubleExtra(DIST_KEY,0.0)
         calsBurned = intent.getDoubleExtra(CAL_KEY,0.0)
-        // Display statistics
-        // Make text bit bold for clarity
+        // Display statistics, make text part bold for clarity
         val mapText = "Number of completed maps:"
         val distText = "Estimated distance walked:"
         val calText = "Estimated calories burned:"

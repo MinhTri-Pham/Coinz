@@ -26,15 +26,14 @@
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button"/>
 
-
     <Button
         android:id="@+id/select_all_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="6dp"
+        android:layout_margin="8dp"
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
-        android:text="Select all"
+        android:text="Select all coins"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button" />
 
@@ -42,10 +41,10 @@
         android:id="@+id/deselect_all_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="6dp"
+        android:layout_margin="8dp"
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
-        android:text="Deselect all"
+        android:text="Deselect all coins"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button"/>
 

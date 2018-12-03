@@ -4,7 +4,7 @@ import java.util.*
 
 class BankTransfer (val date: String, val description: String, val amount: Double, val balance: Double, private val contents: ArrayList<Coin>, val isDeposit: Boolean) {
 
-    // Shows details of transaction
+    // Shows date, currency counts and per coin contents
     fun showDetails() : String {
         val builder = StringBuilder()
         builder.append("Transaction date: $date\n\n")
@@ -21,7 +21,8 @@ class BankTransfer (val date: String, val description: String, val amount: Doubl
         }
         return builder.toString()
     }
-
+    // Message displaying how many coins of each currency were in the transaction
+    // Form: [A] PENY, [B] DOLR, [C] QUID, [D] SHIL, zero count currencies omitted
     private fun generateSummary() : String {
         var numPeny = 0
         var numDolr = 0
@@ -36,6 +37,7 @@ class BankTransfer (val date: String, val description: String, val amount: Doubl
                 "SHIL" -> numShil++
             }
         }
+        // String representations for non-zero currency quantities.
         val quantities : MutableList<String> = mutableListOf()
         if (numPeny != 0) {
             quantities.add("$numPeny PENY")
@@ -49,12 +51,14 @@ class BankTransfer (val date: String, val description: String, val amount: Doubl
         if (numShil != 0) {
             quantities.add("$numShil SHIL")
         }
+        // Build final comma and space separated message from String quantities
         val separator = ", "
         val summaryBuilder = StringBuilder()
         for (quantity in quantities) {
             summaryBuilder.append(quantity).append(separator)
         }
         var summaryMsg = summaryBuilder.toString()
+        // Remove separator after last quantity
         summaryMsg = summaryMsg.substring(0,summaryMsg.length - separator.length)
         return summaryMsg
     }

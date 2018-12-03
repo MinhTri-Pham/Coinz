@@ -4,6 +4,7 @@ import java.util.*
 
 class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>) {
 
+    // For equality
     override fun hashCode(): Int {
         var result = 17
         result = 31 * result + date.hashCode()
@@ -12,6 +13,7 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
         return result
     }
 
+    // Gifts equal if same date, sender and contents
     override fun equals(other: Any?): Boolean {
         if (other !is Gift) return false
         if (date != other.date || from != other.from || contents.size != other.contents.size) return false
@@ -21,8 +23,10 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
         return true
     }
 
+    // Short message that will be displayed to the user
     fun shortDescription(): String {
         val numCoins = contents.size
+        // Handle singular/plural case
         if (numCoins != 1) {
             return "$date: $from sent you ${contents.size} coins!"
         }
@@ -30,6 +34,7 @@ class Gift ( val date : String, val from: String, val contents: ArrayList<Coin>)
     }
 
     // Build newline separated message showing currency and value of each coin in the gift
+    // Shown when opening a gift
     fun showContents(): String{
         val builder = StringBuilder()
         for (coin in contents) {

@@ -4,8 +4,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:background="@color/colorPrimaryDark"
-    android:padding="10dp"
-    >
+    android:padding="8dp">
 
     <TextView android:id="@+id/rank_header"
         android:layout_width="0dp"

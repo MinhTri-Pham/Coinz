@@ -66,14 +66,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // Coin collection mechanism variables
     private var numCollectCoins = 0 // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
-    private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Set of markers already visited by user on the day
+    private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Visited markers on the day
     private var fullWallet = false
     private var collectionBonus = 0
     private var collectionBonusReceived = false // Whether player received daily bonus already
-    private var connectionFlag = false // Whether connection warning issued user
+    private var connectionFlag = false // Whether connection warning issued
 
     // Map downloading
-    private var latestFlag = false
+    private var latestFlag = false // Whether map expiration warning issued
     private var downloadDate = "" // Format: YYYY/MM/DD
     private var mapString = "" // String with map data
     private lateinit var mapJson : JSONObject // JSON object of map
@@ -144,6 +144,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
+        // Set up icon for navigation drawer
         val actionbar: ActionBar? = supportActionBar
         actionbar?.apply {
             setDisplayHomeAsUpEnabled(true)
@@ -166,13 +167,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         dolrInfo = findViewById(R.id.dolrInfo)
         quidInfo = findViewById(R.id.quidInfo)
         shilInfo = findViewById(R.id.shilInfo)
-        // Need findViewById for a com.mapbox.mapboxsdk.maps.MapView
         mapView = findViewById(R.id.mapboxMapView)
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
     }
 
-    // Sets up nav drawer with custom header
+    // Sets up nav drawer with username and email
     // Make it listen for menu item clicks
     private fun setUpNavDrawer() {
         mDrawerLayout = findViewById(R.id.drawer_layout)
@@ -183,6 +183,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val userRef = db.collection(COLLECTION_KEY).document(uid)
         userRef.get().addOnCompleteListener {task: Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
+                // Fetch username and email
                 userName = task.result!!.getString(USERNAME_KEY)!!
                 val email = task.result!!.getString(EMAIL_KEY)
                 val usernameText = "Welcome back $userName!"
@@ -211,7 +212,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             enableLocation()
             val currDate = getCurrentDate()
             // Handle values that change daily before rendering markers
-            // That is number of collected coins and set of visited markers
             val gson = Gson()
             val userDocRef = db.collection(COLLECTION_KEY).document(uid)
             userDocRef.get().addOnCompleteListener { task: Task<DocumentSnapshot> ->
@@ -237,9 +237,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
                             progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                             collectionBonusReceived = taskResult.getBoolean(DAILY_BONUS_KEY)!!
-                            // Goes wrong
-//                            updateDailyValues(userDocRef,currDate)
-                            // Goes wrong
                         }
                         // Otherwise, reset daily variables and update last play date to today
                         else {
@@ -273,6 +270,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
+    // Download map given the date
     private fun downloadMap(date : String) {
         val downloadUrl = "http://homepages.inf.ed.ac.uk/stg/coinz/$date/coinzmap.geojson"
         Log.d(TAG,"[onMapReady] Downloading from $downloadUrl")
@@ -280,6 +278,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         downloadFileTask.execute(downloadUrl)
     }
 
+    // Update values that change daily
+    // Visited markers, number of collected/deposited coins, daily bonus not received
     private fun updateDailyValues(docRef : DocumentReference, currDate: String) {
         val gson = Gson()
         userLastPlay = currDate
@@ -288,6 +288,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         progressInfo.text = "Coins: 0 / $MAX_DAILY_COINS"
         numDepositCoins = 0
         collectionBonusReceived = false
+        // Update these values in Firestore
         docRef.update(LAST_PLAY_KEY, userLastPlay)
         docRef.update(VISITED_MARKERS_KEY, gson.toJson(visitedMarkerSet))
         docRef.update(NUM_COINS_KEY,0)
@@ -306,19 +307,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val coin = coins.getJSONObject(i)
                 val coinProps = coin.getJSONObject("properties")
                 val coinId = coinProps.getString("id")
+                // Skip markers already visited
                 if (visitedMarkerSet.contains(coinId)) {
                     Log.d(TAG,"[renderJson] Marker $coinId already visited today, not rendering it")
                     continue
                 }
+                // Get all relevant info
                 val coinCurrency = coinProps.getString("currency")
                 val coinValue = coinProps.getString("value").toDouble()
                 val coinCoords = coin.getJSONObject("geometry").getJSONArray("coordinates")
                 val coinLatLng = LatLng(coinCoords.get(1) as Double,coinCoords.get(0) as Double)
-                // Build custom marker icon - colour only
-                // Disabled for now, see below comment
-                // BUG: Disappear randomly when map changes (zoom in/out, removing one)
                 val iconFactory = IconFactory.getInstance(this)
                 var icon : Icon? = null
+                // Display coloured marker depending on currency
                 when (coinCurrency) {
                     "PENY"-> {
                         icon = iconFactory.fromResource(R.drawable.red)
@@ -352,6 +353,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.3f",dolrRate))
         Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.3f",quidRate))
         Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.3f",shilRate))
+        // Store in Shared Preferences
         val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         val editor = settings.edit()
         editor.putString("penyRate", penyRate.toString())
@@ -359,12 +361,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString("quidRate", quidRate.toString())
         editor.putString("shilRate", shilRate.toString())
         editor.apply()
+        // Display new rates to user
         penyInfo.text = "PENY: ${String.format("%.3f",penyRate)}"
         dolrInfo.text = "DOLR: ${String.format("%.3f",dolrRate)}"
         quidInfo.text = "QUID: ${String.format("%.3f",quidRate)}"
         shilInfo.text = "SHIL: ${String.format("%.3f",shilRate)}"
     }
 
+    // Determine collection bonus based on number of maps completed
     private fun getCollectionBonus() {
         collectionBonus = when {
             userMapsCompleted < 10 -> 100
@@ -439,6 +443,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
+
+    // Set location focus
     private fun setCameraPosition(location: Location) {
         val latlng = LatLng(location.latitude, location.longitude)
         Log.d(TAG, "[setCameraPosition] Current position: Lat: ${location.latitude} Lng: ${location.longitude}")
@@ -446,21 +452,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     }
 
     // When location changes
-    // If user is sufficiently close to any coin (at least 25m), remove it from the map
+    // -- If user is sufficiently close to any coin (at least 25m), remove it from the map
+    // -- If all coins collected, award a collection bonus
+    // -- Check for odd cases: wallet becomes full, map expires, network connection lost
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
             Log.d(TAG, "[onLocationChanged] Location is null")
         } else {
+            // Keep track of distance walked and calories burned
             if (originLocation != null) {
                 val distanceUser = originLocation!!.distanceTo(location)
                 userDist += distanceUser
-                userCals += distanceUser / 1000 * 65 // Only estimate 70 cal/km
+                userCals += distanceUser / 1000 * 65 // Only estimate 65 cal/km
             }
             originLocation = location
             setCameraPosition(originLocation!!)
             Log.d(TAG,"[onLocationChanged] Distance walked: $userDist")
             Log.d(TAG,"[onLocationChanged] Calories burned: $userCals")
-            // Check if map expired
+            // Check if map expired and sign out user that's the case
             val currDay = getCurrentDate()
             if ((currDay != userLastPlay && userLastPlay != "" && latestFlag)) {
                 Log.d(TAG,"[onLocationChanged] Map expired")
@@ -469,7 +478,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 Toast.makeText(this, "Today's map has expired. Log in again to download " +
                         "the new map", Toast.LENGTH_SHORT).show()
             }
-            // Check internet connection
+            // Check internet connection, warn user if haven't done before
             if (!isNetworkAvailable() && !connectionFlag) {
                 Log.d(TAG,"[onLocationChanged] User disconnected, disable app")
                 Toast.makeText(this, "No connection found, collection is disabled. Check your internet collection.",
@@ -482,24 +491,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 connectionFlag = false
             }
             // Block further notifications and collection if full wallet/map completed/not connected
-            // And warning was already issued
             if (fullWallet || collectionBonusReceived || connectionFlag) {
                 Log.d(TAG, "[onLocationChanged] Can't collect anymore, since wallet full/map completed")
                 return
             }
+            // Iterate through markers, checking distance and removing those close enough
             val mapIt = markerList.entries.iterator()
             while (mapIt.hasNext()) {
                 val pair = mapIt.next()
                 val markerId = pair.key
                 val marker = pair.value
                 val distToMarker = distanceToMarker(originLocation!!,marker)
-                // If user sufficiently close, remove marker from map, add it to user's wallet and notify user
+                // If user sufficiently close, remove marker from map, add coin to user's wallet and notify user
                 if (distToMarker <= MAX_MARKER_DISTANCE) {
                     map!!.removeMarker(marker)
                     Log.d(TAG, "[onLocationChanged] Coin $markerId of ${marker.snippet} with value ${marker.title} removed from map")
                     visitedMarkerSet.add(markerId)
                     val coin = Coin(markerId,marker.snippet, marker.title.toDouble(),false,true)
-                    // If user already contains coin with same id, create a new unique id for it
+                    // Create new unique ids for duplicates
                     // Important for actions with coins (transfer/deposit)
                     if (walletList.contains(coin)) {
                         Log.d(TAG,"[onLocationChanged] Duplicate coin $markerId found")
@@ -513,14 +522,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     walletList.add(coin)
                     numCollectCoins++
                     mapIt.remove()
+                    // Update progress text
                     progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                     Log.d(TAG, "[onLocationChanged] Coin ${coin.id} of ${marker.snippet} with value ${marker.title} collected and added to wallet")
                     Toast.makeText(this,"Coin ${marker.snippet} with value ${marker.title} collected and added to wallet", Toast.LENGTH_SHORT).show()
+                    // Check if whole map completed
                     if (numCollectCoins == MAX_DAILY_COINS && !collectionBonusReceived && bankAccount != null) {
-                        collectionBonusReceived = true // Make sure player can't receive daily bonus more than once per day
+                        collectionBonusReceived = true // Only once per day
                         userMapsCompleted++
                         // Create special dialogs for milestone completion
-                        // Otherwise just dialog informing user about collection bonus
                         when (userMapsCompleted) {
                             10 -> {
                                 collectionBonus = 400
@@ -588,6 +598,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                         "on each completion of the map.")
                                 bonusInfo.show()
                             }
+                            // Otherwise just standard dialog informing user about collection bonus
                             else -> {
                                 Log.d(TAG, "[onLocationChanged] No milestone, collection bonus " +
                                         "stays $collectionBonus GOLD")
@@ -598,7 +609,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                 bonusInfo.show()
                             }
                         }
+                        // Update current bonus information
                         bonusInfo.text = "Current bonus: $collectionBonus GOLD"
+                        // Add bonus transaction to bank account
                         bankAccount!!.bankTransfers.add(BankTransfer(getCurrentDate(),"Received collection bonus $collectionBonus GOLD", collectionBonus.toDouble(),bankAccount!!.balance + collectionBonus,ArrayList(),false))
                         bankAccount!!.balance += collectionBonus
                         userScore += collectionBonus
@@ -652,7 +665,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             } catch (ignored: SecurityException) {}
             locationEngine!!.addLocationEngineListener(this)
         }
-        // Check internet connection
+        // Start as usual if network connection available, otherwise sign out immediately
         if (isNetworkAvailable()) {
             Log.d(TAG,"[onStart] User connected, start as usual")
             Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
@@ -748,7 +761,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         Log.d(TAG,"[saveData] Stored daily bonus receival as $collectionBonusReceived")
     }
 
-    // Load persistent user data from Firestore
+    // Load global user data from Firestore
     // I.e. those that aren't updated daily, these are handled in onMapReady
     private fun loadData() {
         val gson = Gson()
@@ -785,15 +798,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     userMapsCompleted = taskResult.getLong(NUM_MAP_KEY)!!.toInt()
                     Log.d(TAG,"[loadData] Loaded number of completed maps as: $userMapsCompleted")
                     getCollectionBonus()
-                    // Goes wrong
-//                    walletList = ArrayList()
-//                    bankAccount = BankAccount(userName,0.0, ArrayList())
-//                    userScore = 0.0
-//                    userDist = 0.0
-//                    userCals = 0.0
-//                    userMapsCompleted = 0
-//                    collectionBonus = 100
-                    // Goes wrong
                 }
                 else {
                     Toast.makeText(this, "Problems with loading your data!", Toast.LENGTH_SHORT).show()
@@ -830,7 +834,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         if (mapJson.length() != 0) {
             latestFlag = true
             downloadDate = getCurrentDate()
-            mapDate.text = "Map date: $downloadDate"
+            mapDate.text = "Map date: $downloadDate" // Update map date info
             Log.d(TAG, "[downloadComplete] Successfully extracted map")
             val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
             val editor = settings.edit()
@@ -861,28 +865,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         }
     }
 
-    // Usual sign out
-    private fun signOut() {
-        saveData()
-        Log.d(TAG,"[signOut] Signing out user $userName")
-        mAuth.signOut()
-        // Clear activity stack
-        val resetIntent = Intent(this, LoginActivity::class.java)
-        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(resetIntent)
-    }
-
-    // Forced sign out due to connectivity issues
-    private fun forcedSignOut() {
-        Log.d(TAG,"[signOut] Signing out user $userName")
-        mAuth.signOut()
-        val resetIntent = Intent(this, LoginActivity::class.java)
-        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(resetIntent)
-    }
-
     // Handle navigation drawer click events
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         mDrawerLayout.closeDrawers() // Close drawer
@@ -902,12 +884,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 confirmSignOut.setNegativeButton("No") { _: DialogInterface?, _: Int -> }
                 confirmSignOut.show()
             }
-            // Saves wallet and starts Wallet screen
             R.id.wallet -> {
                 saveData()
                 startActivity(Intent(this,WalletActivity::class.java))
             }
-            // Saves wallet and starts Bank account screen
             R.id.bank_account -> {
                 saveData()
                 startActivity(Intent(this,BankActivity::class.java))
@@ -918,6 +898,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             R.id.leaderboard -> {
                 saveData()
+                // Pass data to next activity
                 val leaderboardIntent = Intent(this,LeaderboardActivity::class.java)
                 leaderboardIntent.putExtra(USERNAME_KEY,userName)
                 leaderboardIntent.putExtra(SCORE_KEY,userScore)
@@ -925,6 +906,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             R.id.stats -> {
                 saveData()
+                // Pass data to next activity
                 val statsIntent = Intent(this, StatsActivity::class.java)
                 statsIntent.putExtra(DIST_KEY, userDist)
                 statsIntent.putExtra(CAL_KEY, userCals)
@@ -939,5 +921,27 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetworkInfo = connectivityManager.activeNetworkInfo
         return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
+    // Usual sign out
+    private fun signOut() {
+        saveData()
+        Log.d(TAG,"[signOut] Signing out user $userName")
+        mAuth.signOut()
+        // Clear activity stack
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
+    }
+
+    // Forced sign out due to no network connection at the start
+    private fun forcedSignOut() {
+        Log.d(TAG,"[signOut] Signing out user $userName")
+        mAuth.signOut()
+        val resetIntent = Intent(this, LoginActivity::class.java)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        resetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(resetIntent)
     }
 }

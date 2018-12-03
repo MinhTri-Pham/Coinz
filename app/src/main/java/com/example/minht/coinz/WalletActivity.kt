@@ -104,9 +104,9 @@ class WalletActivity : AppCompatActivity() {
         shilRateTextView = findViewById(R.id.shilRateInfo)
         // Send selected coins to someone
         transferButton.setOnClickListener { _ ->
-            getSelectedCoins()
-            // If some coins collected, open a prompt input dialog to type username of recipient directly
+            getSelectedCoins() // Make sure some coins were selected
             if (selectedCoinList.size != 0) {
+                // Open an input dialog to type username of recipient directly
                 val layoutInflater = LayoutInflater.from(this)
                 val promptView = layoutInflater.inflate(R.layout.username_prompt,null)
                 val usernamePrompt = AlertDialog.Builder(this,R.style.MyDialogTheme)
@@ -126,7 +126,8 @@ class WalletActivity : AppCompatActivity() {
                     }
                     else {
                         Log.d(TAG,"[onCreate] User not connected, can't proceed with transfer")
-                        Toast.makeText(this,"Check your internet connection!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this,"Can't make transfer, " +
+                                "check your internet connection!", Toast.LENGTH_SHORT).show()
                     }
                 }
                 // Pressing "Cancel" closes the prompt dialog and all coins are deselected
@@ -137,38 +138,41 @@ class WalletActivity : AppCompatActivity() {
                 }
             }
             else {
+                // Warn user if no coins selected
                 Toast.makeText(this, "Select some coins to transfer!", Toast.LENGTH_SHORT).show()
                 Log.d(TAG,"[onCreate] No coins selected for transfer")
             }
         }
-        // Deposit selected coins
         depositButton = findViewById(R.id.deposit_coins_button)
         depositButton.setOnClickListener{ _ ->
-            // If new day started, reset number of deposited coins
+            // If new day started and user not notified about it yet,
+            // reset number of deposited coins and notify user.
             // Note: new map downloaded on return to MainActivity
             val currDate = getCurrentDate()
             if (lastTimeStamp != currDate && !ratesToDateFlag) {
                 Log.d(TAG,"[onCreate] Map expired, need to update map and rates")
                 Toast.makeText(this,"Current rates no longer valid, deposits can't be made. " +
                         "Go back to the map to update them ", Toast.LENGTH_SHORT).show()
-                ratesToDateFlag = true
+                ratesToDateFlag = true // Make sure user won't be notified again about same issue
                 numCoinsDeposited = 0
                 depositStateTextView.text = "Coins deposited today: 0 / $MAX_DEPOSIT"
             }
             else {
-                lastTimeStamp = currDate
-                getSelectedCoins()
-                // Check if any coins were selected
+                lastTimeStamp = currDate // Update last timestamp when deposit was attempted
+                getSelectedCoins() // Make sure some coins were selected
                 if (selectedCoinList.size != 0) {
                     val numSelectedCollected = getSelectedCollectedCoins()
                     // Check daily deposit limit on collected coins
                     if (numCoinsDeposited >= MAX_DEPOSIT) {
+                        // Limit already reached
                         Toast.makeText(this,"Reached daily deposit limit on collected coins today! " +
                                 "Try again tomorrow or deposit any received coins!", Toast.LENGTH_SHORT).show()
                         Log.d(TAG,"[onCreate] Reached daily deposit limit")
                     }
                     else if (numCoinsDeposited + numSelectedCollected > MAX_DEPOSIT) {
+                        // Deposit would go over the limit
                         val remainder = MAX_DEPOSIT - numCoinsDeposited
+                        // Show many more coins can be deposited, distinguish singular/plural
                         if (remainder != 1) {
                             Toast.makeText(this,"Can only deposit $remainder more collected coins today!", Toast.LENGTH_SHORT).show()
                             Log.d(TAG,"[onCreate] Only $remainder collected coins left to deposit")
@@ -180,27 +184,27 @@ class WalletActivity : AppCompatActivity() {
                     }
                     else {
                         if (isNetworkAvailable()) {
+                            // Provided network is available, process deposit
+                            // Details in the makeDeposit function
                             Log.d(TAG,"[onCreate] User connected to internet, can proceed with deposit")
                             makeDeposit()
-                            // Save new data for user
-                            saveData()
-                            selectedCoinList.clear()
-                            // Update screen
+                            saveData() // Save changed wallet and bank account
+                            selectedCoinList.clear() // Reset for next action
                             updateScreen()
                         }
                         else {
                             Log.d(TAG,"[onCreate] User not connected, can't proceed with deposit")
-                            Toast.makeText(this, "Check your internet connection!",Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Can't deposit, check your internet connection!",Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
                 else {
+                    // Warn user if no coins selected
                     Toast.makeText(this, "Select some coins to deposit!", Toast.LENGTH_SHORT).show()
                     Log.d(TAG,"[onCreate] No coins selected for deposit")
                 }
             }
         }
-        // Check all coins
         selectButton = findViewById(R.id.select_all_button)
         selectButton.setOnClickListener {_ : View ->
             selectAll()
@@ -209,6 +213,139 @@ class WalletActivity : AppCompatActivity() {
         deselectButton.setOnClickListener { _:View ->
             deselectAll()
         }
+    }
+
+    // Transfer selected coins to given user
+    private fun makeTransfer(recipientUsername: String, dialog: AlertDialog) {
+        val usersRef = db.collection(COLLECTION_KEY)
+        val userDoc = usersRef.document(mAuth.uid!!)
+        userDoc.get().addOnCompleteListener{task: Task<DocumentSnapshot> ->
+            if (task.isSuccessful) {
+                val mUsername = task.result!!.getString(USERNAME_KEY) // Username of current user
+                if (!recipientUsername.isEmpty()) {
+                    // Make sure username inputted by user exists
+                    val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
+                    findUsernameQuery.get().addOnCompleteListener{taskQuery: Task<QuerySnapshot> ->
+                        if (taskQuery.isSuccessful) {
+                            val doc = taskQuery.result
+                            if (!doc!!.isEmpty) {
+                                // Can't send coins to yourself, don't close prompt window
+                                if (recipientUsername == userName) {
+                                    Log.d(TAG, "[makeTransfer] Attempting to send coins to yourself")
+                                    Toast.makeText(this,"Can't send coins to yourself!",Toast.LENGTH_SHORT).show()
+                                }
+                                else {
+                                    // Extracts gifts of recipient
+                                    val recipientId = doc.documents[0].id
+                                    var recipientGiftsString = doc.documents[0].get(GIFTS_KEY).toString()
+                                    val type = object : TypeToken<ArrayList<Gift>>() {}.type
+                                    val recipientGifts : ArrayList<Gift> = gson.fromJson(recipientGiftsString,type)
+                                    if (recipientGifts.size < MAX_GIFTS) {
+                                        val giftContents = makeGiftContents() // Make gift from selected coins
+                                        val gift = Gift(getCurrentDate(), mUsername!!, giftContents)
+                                        // Add gift to recipient's gifts and update in Firestore
+                                        recipientGifts.add(gift)
+                                        recipientGiftsString = gson.toJson(recipientGifts)
+                                        usersRef.document(recipientId).update(GIFTS_KEY,recipientGiftsString)
+                                        Log.d(TAG, "[makeTransfer] Updated wallet of recipient as $recipientGiftsString")
+                                        // Remove coins from user wallet and update in Firestore
+                                        coinList.removeAll(giftContents)
+                                        val userWalletString = gson.toJson(coinList)
+                                        usersRef.document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
+                                        Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
+                                        dialog.dismiss() // Close prompt dialog
+                                        selectedCoinList.clear()
+                                        updateScreen() // Refresh screen without selected coins
+                                    }
+                                    else {
+                                        // If chosen person already has max number of unopened gifts, warn user
+                                        // Don't close prompt window
+                                        Log.d(TAG, "[makeTransfer] Input user already has maximum number of gifts")
+                                        Toast.makeText(this, "Chosen user already has maximum number of gifts! Try a different one", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            else {
+                                // Warn user if input username doesn't exist
+                                Log.d(TAG, "[makeTransfer] Input user doesn't exist")
+                                Toast.makeText(this, "No player with such username! Try a different one", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        else {
+                            val message = taskQuery.exception!!.message
+                            Log.d(TAG,"[makeTransfer] Error when looking for username")
+                            Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                else {
+                    // If empty input, warn user and don't close the prompt window
+                    Log.d(TAG,"[makeTransfer] Can't query since input was empty")
+                    Toast.makeText(this, "Choose a player to send coins to", Toast.LENGTH_SHORT).show()
+                }
+            }
+            // If some error occurs, warn user and close dialog
+            else {
+                Log.d(TAG, "[makeTransfer] Error getting user document")
+                val message = task.exception!!.message
+                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+                deselectAll()
+            }
+        }
+    }
+
+    // Deposit selected coins to bank account
+    private fun makeDeposit() {
+        var numCoins = 0 // Total number of coins in deposit
+        var numCollectedCoins = 0 // Number of coins collected by user in deposit
+        var amount = 0.0 // Deposit amount
+        val contents : ArrayList<Coin> = ArrayList()
+        for (coin in selectedCoinList) {
+            contents.add(coin)
+            numCoins++
+            if (coin.collected) {
+                numCollectedCoins++
+            }
+            val currency = coin.currency
+            val value = coin.valueInGold
+            // Compute deposit amount using coin value, currency and exchange rates
+            when(currency) {
+                "PENY" -> {
+                    amount += penyRate*value
+                }
+                "DOLR" -> {
+                    amount += dolrRate*value
+                }
+                "QUID" -> {
+                    amount += quidRate*value
+                }
+                "SHIL" -> {
+                    amount += shilRate*value
+                }
+                else -> Log.d(TAG, "[makeSelectedCoinList] Invalid currency encountered")
+            }
+        }
+        val depositDesc : String
+        // Generate deposit description that will be displayed in the bank acoount
+        // Distinguish singular/plural
+        depositDesc = if (numCoins != 1) {
+            "Deposited $numCoins coins"
+        }
+        else {
+            "Deposited $numCoins coin"
+        }
+        // Add transaction to bank account history, update user score
+        // (latter for leaderboard, same as balance of bank account)
+        numCoinsDeposited += numCollectedCoins
+        val newBalance = bankAccount.balance + amount
+        userScore += amount
+        Log.d(TAG,"[makeDeposit] New score is $userScore")
+        val bankTransfer =  BankTransfer(getCurrentDate(),depositDesc,amount,newBalance,contents,true)
+        bankAccount.balance = newBalance
+        bankAccount.bankTransfers.add(bankTransfer)
+        coinList.removeAll(contents)
+        Log.d(TAG, "[makeDeposit] Deposit made\n" + bankTransfer.showDetails())
     }
 
     // Extract which coins were selected
@@ -251,84 +388,6 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-    // Transfer selected coins to given user
-    private fun makeTransfer(recipientUsername: String, dialog: AlertDialog) {
-        val usersRef = db.collection(COLLECTION_KEY)
-        val userDoc = usersRef.document(mAuth.uid!!)
-        userDoc.get().addOnCompleteListener{task: Task<DocumentSnapshot> ->
-            if (task.isSuccessful) {
-                val mUsername = task.result!!.getString(USERNAME_KEY) // Username of current user
-                if (!recipientUsername.isEmpty()) {
-                    val findUsernameQuery = usersRef.whereEqualTo(USERNAME_KEY,recipientUsername)
-                    findUsernameQuery.get().addOnCompleteListener{taskQuery: Task<QuerySnapshot> ->
-                        if (taskQuery.isSuccessful) {
-                            val doc = taskQuery.result
-                            // Check if chosen username exists
-                            if (!doc!!.isEmpty) {
-                                // Can't send coins to yourself, don't close prompt window
-                                if (recipientUsername == userName) {
-                                    Log.d(TAG, "[makeTransfer] Attempting to send coins to yourself")
-                                    Toast.makeText(this,"Can't send coins to yourself!",Toast.LENGTH_SHORT).show()
-                                }
-                                else {
-                                    val recipientId = doc.documents[0].id
-                                    var recipientGiftsString = doc.documents[0].get(GIFTS_KEY).toString()
-                                    val type = object : TypeToken<ArrayList<Gift>>() {}.type
-                                    val recipientGifts : ArrayList<Gift> = gson.fromJson(recipientGiftsString,type)
-                                    // Check how many gifts recipient has
-                                    if (recipientGifts.size < MAX_GIFTS) {
-                                        val giftContents = makeGiftContents()
-                                        val gift = Gift(getCurrentDate(), mUsername!!, giftContents)
-                                        recipientGifts.add(gift)
-                                        recipientGiftsString = gson.toJson(recipientGifts)
-                                        usersRef.document(recipientId).update(GIFTS_KEY,recipientGiftsString)
-                                        Log.d(TAG, "[makeTransfer] Updated wallet of recipient as $recipientGiftsString")
-                                        coinList.removeAll(giftContents)
-                                        val userWalletString = gson.toJson(coinList)
-                                        usersRef.document(mAuth.uid!!).update(WALLET_KEY,userWalletString)
-                                        Toast.makeText(this, "Transfer completed", Toast.LENGTH_SHORT).show()
-                                        dialog.dismiss() // Close prompt dialog
-                                        selectedCoinList.clear()
-                                        updateScreen() // Refresh screen
-                                    }
-                                    else {
-                                        // If chosen person already has max number of unopened gifts, warn user
-                                        // Don't close prompt window
-                                        Log.d(TAG, "[makeTransfer] Input user already has maximum number of gifts")
-                                        Toast.makeText(this, "Chosen user already has maximum number of gifts! Try a different one", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                            else {
-                                // If invalid input, warn user and don't close the prompt window
-                                Log.d(TAG, "[makeTransfer] Input user doesn't exist")
-                                Toast.makeText(this, "No player with such username! Try a different one", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        else {
-                            val message = taskQuery.exception!!.message
-                            Log.d(TAG,"[makeTransfer] Error when looking for username")
-                            Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-                else {
-                    // If blank input, warn user and don't close the prompt window
-                    Log.d(TAG,"[makeTransfer] Can't query since input was empty")
-                    Toast.makeText(this, "Choose a player to send coins to", Toast.LENGTH_SHORT).show()
-                }
-            }
-            // If some error occurs, warn user and close dialog
-            else {
-                Log.d(TAG, "[makeTransfer] Error getting user document")
-                val message = task.exception!!.message
-                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-                deselectAll()
-            }
-        }
-    }
-
     // Contents of gift to be sent to other user
     private fun makeGiftContents(): ArrayList<Coin> {
         val giftContents : ArrayList<Coin>  = ArrayList()
@@ -338,56 +397,6 @@ class WalletActivity : AppCompatActivity() {
             giftContents.add(coin)
         }
         return giftContents
-    }
-
-    // Deposit selected coins to bank account
-    private fun makeDeposit() {
-        var numCoins = 0 // Number of coins deposited
-        var numCollectedCoins = 0
-        var amount = 0.0 // Deposit amount
-        val contents : ArrayList<Coin> = ArrayList()
-        for (coin in selectedCoinList) {
-            contents.add(coin)
-            numCoins++
-            // Keep track of number of deposited collected coins
-            if (coin.collected) {
-                numCollectedCoins++
-            }
-            val currency = coin.currency
-            val value = coin.valueInGold
-            // Compute deposit amount using coin values and exchange rates
-            when(currency) {
-                "PENY" -> {
-                    amount += penyRate*value
-                }
-                "DOLR" -> {
-                    amount += dolrRate*value
-                }
-                "QUID" -> {
-                    amount += quidRate*value
-                }
-                "SHIL" -> {
-                    amount += shilRate*value
-                }
-                else -> Log.d(TAG, "[makeSelectedCoinList] Invalid currency encountered")
-            }
-        }
-        val depositDesc : String
-        depositDesc = if (numCoins != 1) {
-            "Deposited $numCoins coins"
-        }
-        else {
-            "Deposited $numCoins coin"
-        }
-        numCoinsDeposited += numCollectedCoins
-        val newBalance = bankAccount.balance + amount
-        userScore += amount
-        Log.d(TAG,"[makeDeposit] New score is $userScore")
-        val bankTransfer =  BankTransfer(getCurrentDate(),depositDesc,amount,newBalance,contents,true)
-        bankAccount.balance = newBalance
-        bankAccount.bankTransfers.add(bankTransfer)
-        coinList.removeAll(contents)
-        Log.d(TAG, "[makeDeposit] Deposit made\n" + bankTransfer.showDetails())
     }
 
     // Update screen after action performed (deposit or transfer)
@@ -449,9 +458,8 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-    // Saves data into Firestore
+    // Update user's wallet and bank account Firestore
     private fun saveData() {
-        // Update user's wallet and bank account
         var dataString = gson.toJson(coinList)
         val userRef =  db.collection(COLLECTION_KEY).document(mAuth.uid!!)
         userRef.update(WALLET_KEY,dataString)
@@ -465,10 +473,10 @@ class WalletActivity : AppCompatActivity() {
         Log.d(TAG, "[saveData] Stored score as $userScore")
     }
 
-    // Display textview content before list of coins
+    // Display text summaries of wallet
     private fun generateSummary() {
         // Make text bits bold for clarity
-        // Italics for received coins
+        // Use italics to stress difference between collected and received coins
         val boldStyle = StyleSpan(Typeface.BOLD)
         val depositStateText = "Coins deposited today:"
         val depositStateMsg = "Coins deposited today: $numCoinsDeposited / $MAX_DEPOSIT"
@@ -509,20 +517,20 @@ class WalletActivity : AppCompatActivity() {
             spanStringBuilder.setSpan(boldStyle,0,italicStart-1,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
             spanStringBuilder.setSpan(italicStyle,italicStart,coinListText.length,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
             coinListDesc.text = spanStringBuilder
-            // Buttons for actions
+            // Action buttons
             transferButton.visibility = View.VISIBLE
             depositButton.visibility = View.VISIBLE
             selectButton.visibility = View.VISIBLE
             deselectButton.visibility = View.VISIBLE
         }
         else {
-            // If user has no coins, don't show most of contents (since it's useless in that case)
+            // Notify user that he has no coins
             val walletStateMsg = "You don't have any coins in the wallet! Collect coins on the" +
                     " map" + " or check for any unopened gifts."
             spanStringBuilder = SpannableStringBuilder(walletStateMsg)
             spanStringBuilder.setSpan(boldStyle,0,walletStateMsg.length,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
             walletStateTextView.text = spanStringBuilder
-            // Do not show exchange rates, hide all buttons and no list of coins and its description
+            // Don't show exchange rates, action buttons or list of coins (no use of them in this case)
             penyRateTextView.text=""
             dolrRateTextView.text=""
             quidRateTextView.text=""
@@ -534,17 +542,12 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-    // Check if internet connection is available
-    private fun isNetworkAvailable() : Boolean {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetworkInfo = connectivityManager.activeNetworkInfo
-        return activeNetworkInfo != null && activeNetworkInfo.isConnected
-    }
-
     override fun onStart() {
         super.onStart()
+        // Start as usual if network connection available, otherwise sign out immediately
         if (isNetworkAvailable()) {
             Log.d(TAG,"[onStart] User connected, start as usual")
+            // To keep track of when deposits made in case exchange rates expire
             lastTimeStamp = getCurrentDate()
             // Load exchange rates from Shared Preferences
             val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
@@ -556,7 +559,7 @@ class WalletActivity : AppCompatActivity() {
             Log.d(TAG, "[onStart] Recalled DOLR rate as $dolrRate")
             Log.d(TAG, "[onStart] Recalled QUID rate as $quidRate")
             Log.d(TAG, "[onStart] Recalled SHIL rate as $shilRate")
-            loadData() // Other data loaded from Firestore
+            loadData()
         }
         else {
             Log.d(TAG,"[onStart] User disconnected, sign out")
@@ -566,6 +569,14 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
+    // Check if internet connection is available
+    private fun isNetworkAvailable() : Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetworkInfo = connectivityManager.activeNetworkInfo
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected
+    }
+
+    // Sign out user if no network connection available when activity launched
     private fun signOut() {
         Log.d(TAG,"[signOut] Signing out user")
         mAuth.signOut()
