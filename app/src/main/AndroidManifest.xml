@@ -53,7 +53,7 @@
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".ResetPasswordActivity"
-            android:label="ResetPassword"
+            android:label="Reset Password"
             android:parentActivityName=".LoginActivity"/>
     </application>
 

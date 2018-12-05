@@ -178,9 +178,9 @@ class BankActivity : AppCompatActivity() {
         else {
             // Sign out user if no network connection when activity starts
             Log.d(TAG,"[onStart] User disconnected, can't load data")
-            signOut()
-            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+            Toast.makeText(this,"Can't communicate with server! Check your internet " +
                     "connection and log in again.", Toast.LENGTH_SHORT).show()
+            signOut()
         }
     }
 

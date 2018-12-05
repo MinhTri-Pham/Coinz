@@ -27,7 +27,7 @@
         android:id = "@+id/displayPeriodDesc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text = "Display period"
+        android:text = "@string/display_period"
         android:padding="12dp"
         android:textSize="18sp"
         android:textStyle="bold"

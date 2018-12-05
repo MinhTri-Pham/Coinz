@@ -42,7 +42,7 @@ class LoginActivity : AppCompatActivity() {
             }
             else {
                 Log.d(TAG, "[onCreate] User not connected, can't proceed with log in")
-                Toast.makeText(this,"Check your internet connection!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,"Login failed, check your internet connection!", Toast.LENGTH_SHORT).show()
             }
         }
         registerLink = findViewById(R.id.signUpLink)
@@ -67,17 +67,18 @@ class LoginActivity : AppCompatActivity() {
             mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener{task: Task<AuthResult> ->
                 if (task.isSuccessful) {
                     Log.d(TAG, "[loginUser] User logged in successfully")
+                    finish()
                     startActivity(Intent(this,MainActivity::class.java))
-                    Toast.makeText(this,"Successfully logged in", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,"Successfully logged in!", Toast.LENGTH_SHORT).show()
                 } else {
                     Log.d(TAG, "[loginUser] Authentication failed since credentials were incorrect")
-                    Toast.makeText(this,"Email or password wasn't correct", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,"Email or password wasn't correct!", Toast.LENGTH_SHORT).show()
                 }
             }
         // If credentials empty warn user about this
         } else {
             Log.d(TAG, "[loginUser] Authentication failed since credentials were incorrect")
-            Toast.makeText(this, "Please fill all credentials",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Fill all credentials!",Toast.LENGTH_SHORT).show()
         }
     }
 

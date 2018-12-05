@@ -4,6 +4,8 @@
     android:layout_height="wrap_content"
     android:padding="8dp">
 
+    <!-- Leaderboard header for current user -->
+
     <TextView
         android:id="@+id/playerRank"
         android:layout_width="0dp"

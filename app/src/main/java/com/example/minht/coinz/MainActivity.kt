@@ -237,6 +237,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
                             progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                             collectionBonusReceived = taskResult.getBoolean(DAILY_BONUS_KEY)!!
+                            collectionBonusReceived = false
                         }
                         // Otherwise, reset daily variables and update last play date to today
                         else {
@@ -481,8 +482,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             // Check internet connection, warn user if haven't done before
             if (!isNetworkAvailable() && !connectionFlag) {
                 Log.d(TAG,"[onLocationChanged] User disconnected, disable app")
-                Toast.makeText(this, "No connection found, collection is disabled. Check your internet collection.",
-                        Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "No connection found, collection is disabled unless" +
+                        " you reconnect!", Toast.LENGTH_SHORT).show()
                 connectionFlag = true
             }
             // If user reconnects, collection is enabled
@@ -492,7 +493,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             // Block further notifications and collection if full wallet/map completed/not connected
             if (fullWallet || collectionBonusReceived || connectionFlag) {
-                Log.d(TAG, "[onLocationChanged] Can't collect anymore, since wallet full/map completed")
+                Log.d(TAG, "[onLocationChanged] Can't collect anymore," +
+                        " since wallet full/map completed/lost connection")
                 return
             }
             // Iterate through markers, checking distance and removing those close enough
@@ -604,7 +606,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                                         "stays $collectionBonus GOLD")
                                 val bonusInfo = AlertDialog.Builder(this,R.style.MyDialogTheme)
                                 bonusInfo.setTitle("Collection bonus").setCancelable(true)
-                                bonusInfo.setMessage("You've completed today's map! As a reward,\n" +
+                                bonusInfo.setMessage("You've completed today's map! As a reward, " +
                                         "you receive a collection bonus $collectionBonus GOLD")
                                 bonusInfo.show()
                             }
@@ -671,7 +673,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
             // Restore data from Shared Preferences
             val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-            // Recall map variables
+            // Recall map downloading variables
             downloadDate = settings.getString(DOWNLOAD_DATE_KEY, "")
             mapString = settings.getString(MAP_KEY,"")
             mapJson = if (mapString == "") {
@@ -681,8 +683,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             }
             Log.d(TAG, "[onStart] Recalled lastDownloadDate is $downloadDate")
             Log.d(TAG, "[onStart] Recalled lastCoinMap is $mapString")
-            Log.d(TAG, "[onStart] Recalled number of collected coins is $numCollectCoins")
-            Log.d(TAG, "[onStart] Recalled number of visited markers today as ${visitedMarkerSet.size}\")")
             // Recall exchange rates
             penyRate = settings.getString("penyRate","0.0").toDouble()
             dolrRate = settings.getString("dolrRate","0.0").toDouble()

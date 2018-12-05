@@ -3,6 +3,8 @@
     android:orientation="horizontal" android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="8dp">
+
+    <!-- Layout for individual leaderboard row in LeaderboardActivity -->
     
     <TextView
         android:id="@+id/rankLeaderItem"

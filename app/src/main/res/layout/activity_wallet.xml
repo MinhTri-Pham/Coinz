@@ -29,11 +29,12 @@
         android:textColor="@color/black"/>
 
     <TextView
+        android:id = "@+id/ratesDesc"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
         android:textSize="18sp"
-        android:text="Current exchange rates"
+        android:text="@string/rate_info"
         android:textStyle="bold"
         android:textColor="@color/black"/>
 

@@ -72,6 +72,15 @@ public class RegisterFailTest {
         appCompatButton.perform(click());
         textView.check(matches(isDisplayed()));
         appCompatButton.check(matches(isDisplayed()));
+
+        // Non alphanumeric username
+        // Malformed email
+        appCompatEditText.perform(replaceText("new-User!"), closeSoftKeyboard());
+        appCompatEditText2.perform(replaceText("newUser@test.com"), closeSoftKeyboard());
+        appCompatEditText3.perform(replaceText("123456"), closeSoftKeyboard());
+        appCompatButton.perform(click());
+        textView.check(matches(isDisplayed()));
+        appCompatButton.check(matches(isDisplayed()));
     }
 
     private static Matcher<View> childAtPosition(

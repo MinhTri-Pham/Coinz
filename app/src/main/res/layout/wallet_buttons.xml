@@ -11,7 +11,7 @@
         android:layout_weight="1"
         android:layout_margin="6dp"
         android:background="@color/colorPrimaryDark"
-        android:text="Transfer coins"
+        android:text="@string/transfer_coins"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button" />
 
@@ -22,7 +22,7 @@
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
         android:layout_margin="6dp"
-        android:text="Deposit coins"
+        android:text="@string/deposit_coins"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button"/>
 
@@ -33,7 +33,7 @@
         android:layout_margin="8dp"
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
-        android:text="Select all coins"
+        android:text="@string/select_all"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button" />
 
@@ -44,7 +44,7 @@
         android:layout_margin="8dp"
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
-        android:text="Deselect all coins"
+        android:text="@string/select_all"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button"/>
 

@@ -4,6 +4,8 @@
     android:layout_height="match_parent"
     android:padding="10dp">
 
+    <!-- Layout for individual coin row in WalletActivity -->
+
     <TextView
         android:id = "@+id/txtCoinSummary"
         android:layout_width="wrap_content"

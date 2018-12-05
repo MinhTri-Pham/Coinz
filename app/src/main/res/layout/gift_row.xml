@@ -4,6 +4,8 @@
     android:layout_height="match_parent"
     android:padding="10dp">
 
+    <!-- Layout for individual gift row in GiftActivity -->
+
     <TextView
         android:id = "@+id/giftSummary"
         android:layout_width="wrap_content"

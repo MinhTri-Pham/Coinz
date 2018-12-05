@@ -51,6 +51,7 @@ class WalletActivity : AppCompatActivity() {
     private var dolrRate : Double = 0.0
     private var quidRate : Double = 0.0
     private var shilRate : Double = 0.0
+    private lateinit var ratesDesc: TextView
     private lateinit var penyRateTextView: TextView
     private lateinit var dolrRateTextView: TextView
     private lateinit var quidRateTextView: TextView
@@ -98,6 +99,7 @@ class WalletActivity : AppCompatActivity() {
         coinListDesc = findViewById(R.id.coinListDesc)
         coinListView = findViewById(R.id.coin_checkable_list)
         transferButton = findViewById(R.id.transfer_coins_button)
+        ratesDesc = findViewById(R.id.ratesDesc)
         penyRateTextView = findViewById(R.id.penyRateInfo)
         dolrRateTextView = findViewById(R.id.dolrRateInfo)
         quidRateTextView = findViewById(R.id.quidRateInfo)
@@ -531,9 +533,11 @@ class WalletActivity : AppCompatActivity() {
             spanStringBuilder.setSpan(boldStyle,0,walletStateMsg.length,Spannable.SPAN_INCLUSIVE_INCLUSIVE)
             walletStateTextView.text = spanStringBuilder
             // Don't show exchange rates, action buttons or list of coins (no use of them in this case)
+            ratesDesc.text = ""
             penyRateTextView.text=""
             dolrRateTextView.text=""
             quidRateTextView.text=""
+            shilRateTextView.text=""
             coinListDesc.text = ""
             transferButton.visibility = View.INVISIBLE
             depositButton.visibility = View.INVISIBLE
@@ -563,9 +567,9 @@ class WalletActivity : AppCompatActivity() {
         }
         else {
             Log.d(TAG,"[onStart] User disconnected, sign out")
-            signOut()
-            Toast.makeText(this,"Can't communicate with server. Check your internet " +
+            Toast.makeText(this,"Can't communicate with server! Check your internet " +
                     "connection and log in again.", Toast.LENGTH_SHORT).show()
+            signOut()
         }
     }
 

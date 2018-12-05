@@ -135,9 +135,9 @@ class GiftActivity : AppCompatActivity() {
         }
         else {
             Log.d(TAG,"[onStart] User disconnected, sign out")
-            signOut()
             Toast.makeText(this,"Can't communicate with server. Check your internet " +
                     "connection and log in again.", Toast.LENGTH_SHORT).show()
+            signOut()
         }
     }
 

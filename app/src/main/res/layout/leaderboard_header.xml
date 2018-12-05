@@ -6,6 +6,8 @@
     android:background="@color/colorPrimaryDark"
     android:padding="8dp">
 
+    <!-- Layout for displaying header above leaderboard in LeaderboardActivity -->
+
     <TextView android:id="@+id/rank_header"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

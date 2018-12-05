@@ -4,6 +4,8 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal">
 
+    <!-- Layout for displaying exchange rates in WalletActivity -->
+
     <TextView
         android:id="@+id/penyRateInfo"
         android:layout_width="wrap_content"

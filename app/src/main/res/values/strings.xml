@@ -19,6 +19,21 @@
     <string name="password_hint">Enter your password</string>
     <string name="password_prompt">Choose your password</string>
     <string name="username_hint">Choose your username</string>
+    <!-- Wallet buttons text -->
+    <string name="rate_info">Current exchange rates</string>
+    <string name="transfer_coins">Transfer coins</string>
+    <string name="deposit_coins">Deposit coins</string>
+    <string name="select_all">Select all coins</string>
+    <string name="deselect_all">Deselect all coins</string>
+    <!-- Choosing recipient when transferring coins -->
+    <string name="username_prompt">Enter username of recipient</string>
+    <string name="username_prompt_text">Enter username</string>
+    <!-- BankActivity text -->
+    <string name="display_period">Display period</string>
+    <string name="date_header">Date</string>
+    <string name="desc_header">Description</string>
+    <string name="amount_header">Amount</string>
+    <string name="balance_header">Balance</string>
     <!-- Options for display period in BankActivity Spinner -->
     <string-array name="displayPeriods">
         <!-- Default one is "Last week" -->

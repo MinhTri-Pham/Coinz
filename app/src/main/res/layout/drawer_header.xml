@@ -8,6 +8,8 @@
     android:background="@color/colorPrimaryDark"
     android:padding="15dp">
 
+    <!-- Layout for header of navigation drawer, populate with user data -->
+
     <TextView
         android:id="@+id/nav_text_username"
         android:layout_width="wrap_content"

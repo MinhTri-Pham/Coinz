@@ -5,6 +5,8 @@
     android:orientation="horizontal"
     android:padding="8dp">
 
+    <!-- Layout for individual bank transaction row in BankActivity -->
+
     <TextView android:id="@+id/txtDate"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

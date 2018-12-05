@@ -89,95 +89,100 @@ class RegisterActivity : AppCompatActivity() {
         val username = usernameText.text.toString()
         val email = emailText.text.toString()
         val password = passwordText.text.toString()
-        if (!username.isEmpty() && !email.isEmpty() && !password.isEmpty()) {
-            // Check if chosen username is unique
-            val usersRef = db.collection(COLLECTION_KEY)
-            val checkUsername = usersRef.whereEqualTo(USERNAME_KEY, username)
-            checkUsername.get().addOnCompleteListener{checkUsernameTask: Task<QuerySnapshot> ->
-                if (checkUsernameTask.isSuccessful) {
-                    if (checkUsernameTask.result!!.isEmpty) {
-                        Log.d(TAG,"[registerUser] Username us unique, proceeding to further checks")
-                        // Check validity of other credentials, warn if invalid
-                        mAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener{ task: Task<AuthResult> ->
-                            if (task.isSuccessful) {
-                                Log.d(TAG,"[registerUser] Registration successful, update FireStore database")
-                                // Create document for user in "Users" collection in Firestore
-                                // Initialise data
-                                val user : HashMap<String, Any> = HashMap()
-                                user[USERNAME_KEY] = username
-                                user[EMAIL_KEY] = email
-                                val emptyWallet = ArrayList<Coin>()
-                                val emptyBankTransfers = ArrayList<BankTransfer>()
-                                val emptyGifts = ArrayList<Gift>()
-                                val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
-                                val emptyVisitedSet = mutableSetOf<String>()
-                                val gson = Gson()
-                                // Initialise user data
-                                user[WALLET_KEY] = gson.toJson(emptyWallet)
-                                user[BANK_KEY] = gson.toJson(emptyBankAccount)
-                                user[GIFTS_KEY] = gson.toJson(emptyGifts)
-                                user[SCORE_KEY] = 0
-                                user[DIST_KEY] = 0
-                                user[CAL_KEY] = 0
-                                user[NUM_MAP_KEY] = 0
-                                user[LAST_PLAY_DATE_KEY] = ""
-                                user[VISITED_MARKERS_KEY] = gson.toJson(emptyVisitedSet)
-                                user[NUM_COINS_KEY] = 0
-                                user[NUM_DEPOSIT_KEY] = 0
-                                user[DAILY_BONUS_KEY] = false
-                                db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
-                                    Log.d(TAG,"[registerUser] Created new user")
-                                    Toast.makeText(this, "Registered successfully", Toast.LENGTH_SHORT).show()
-                                    // Update user count in Shared Preferences
-                                    val prefs = getSharedPreferences(PREFS_FILE,Context.MODE_PRIVATE)
-                                    var numPlayers = prefs.getInt(NUM_PLAYERS_KEY,0)
-                                    Log.d(TAG,"[registerUser] Recalled number of players as $numPlayers")
-                                    numPlayers++
-                                    val editor = prefs.edit()
-                                    editor.putInt(NUM_PLAYERS_KEY,numPlayers)
-                                    editor.apply()
-                                    Log.d(TAG,"[registerUser] Updated number of players to $numPlayers")
-                                    startActivity(Intent(this,LoginActivity::class.java))
+        // Empty credentials
+        if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            Log.d(TAG,"[registerUser] Registration failed because input was empty")
+            Toast.makeText(this, "Fill all credentials!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Not alphanumeric username
+        if (!username.matches("[A-Za-z0-9]+".toRegex())) {
+            Log.d(TAG, "[registerUser] Invalid username, not alphanumeric")
+            Toast.makeText(this,"Invalid username, must be alphanumeric!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Check if chosen username is unique
+        val usersRef = db.collection(COLLECTION_KEY)
+        val checkUsername = usersRef.whereEqualTo(USERNAME_KEY, username)
+        checkUsername.get().addOnCompleteListener{checkUsernameTask: Task<QuerySnapshot> ->
+            if (checkUsernameTask.isSuccessful) {
+                if (checkUsernameTask.result!!.isEmpty) {
+                    Log.d(TAG,"[registerUser] Username us unique, proceeding to further checks")
+                    // Check validity of other credentials, warn if invalid
+                    mAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener{ task: Task<AuthResult> ->
+                        if (task.isSuccessful) {
+                            Log.d(TAG,"[registerUser] Registration successful, update FireStore database")
+                            // Create document for user in "Users" collection in Firestore
+                            // Initialise data
+                            val user : HashMap<String, Any> = HashMap()
+                            user[USERNAME_KEY] = username
+                            user[EMAIL_KEY] = email
+                            val emptyWallet = ArrayList<Coin>()
+                            val emptyBankTransfers = ArrayList<BankTransfer>()
+                            val emptyGifts = ArrayList<Gift>()
+                            val emptyBankAccount = BankAccount(username,0.0,emptyBankTransfers)
+                            val emptyVisitedSet = mutableSetOf<String>()
+                            val gson = Gson()
+                            // Initialise user data
+                            user[WALLET_KEY] = gson.toJson(emptyWallet)
+                            user[BANK_KEY] = gson.toJson(emptyBankAccount)
+                            user[GIFTS_KEY] = gson.toJson(emptyGifts)
+                            user[SCORE_KEY] = 0
+                            user[DIST_KEY] = 0
+                            user[CAL_KEY] = 0
+                            user[NUM_MAP_KEY] = 0
+                            user[LAST_PLAY_DATE_KEY] = ""
+                            user[VISITED_MARKERS_KEY] = gson.toJson(emptyVisitedSet)
+                            user[NUM_COINS_KEY] = 0
+                            user[NUM_DEPOSIT_KEY] = 0
+                            user[DAILY_BONUS_KEY] = false
+                            db.collection(COLLECTION_KEY).document(mAuth.uid!!).set(user).addOnSuccessListener{ _: Void? ->
+                                Log.d(TAG,"[registerUser] Created new user")
+                                Toast.makeText(this, "Registered successfully!", Toast.LENGTH_SHORT).show()
+                                // Update user count in Shared Preferences
+                                val prefs = getSharedPreferences(PREFS_FILE,Context.MODE_PRIVATE)
+                                var numPlayers = prefs.getInt(NUM_PLAYERS_KEY,0)
+                                Log.d(TAG,"[registerUser] Recalled number of players as $numPlayers")
+                                numPlayers++
+                                val editor = prefs.edit()
+                                editor.putInt(NUM_PLAYERS_KEY,numPlayers)
+                                editor.apply()
+                                Log.d(TAG,"[registerUser] Updated number of players to $numPlayers")
+                                startActivity(Intent(this,LoginActivity::class.java))
 
-                                }
                             }
-                            else {
-                                Log.d(TAG,"[registerUser] Registration failed due to bad credentials")
-                                val exc = task.exception
-                                when (exc) {
-                                    // Show detailed reason why registration failed
-                                    is FirebaseAuthUserCollisionException -> {
-                                        Log.d(TAG, "[registerUser] Registration failed since email exists")
-                                        Toast.makeText(this, "Registration failed, an account with this email already exists!", Toast.LENGTH_SHORT).show()
-                                    }
-                                    is FirebaseAuthWeakPasswordException -> {
-                                        Log.d(TAG, "[registerUser] Registration failed since password was too weak")
-                                        Toast.makeText(this, "Registration failed, your password is too weak! Must be at least 6 characters long", Toast.LENGTH_SHORT).show()
-                                    }
-                                    is FirebaseAuthInvalidCredentialsException -> {
-                                        Log.d(TAG, "[registerUser] Registration failed since email is malformed")
-                                        Toast.makeText(this, "Registration failed, encountered an invalid email address!", Toast.LENGTH_SHORT).show()
-                                    }
+                        }
+                        else {
+                            Log.d(TAG,"[registerUser] Registration failed due to bad credentials")
+                            val exc = task.exception
+                            when (exc) {
+                            // Show detailed reason why registration failed
+                                is FirebaseAuthUserCollisionException -> {
+                                    Log.d(TAG, "[registerUser] Registration failed since email exists")
+                                    Toast.makeText(this, "Registration failed, an account with this email already exists!", Toast.LENGTH_SHORT).show()
+                                }
+                                is FirebaseAuthWeakPasswordException -> {
+                                    Log.d(TAG, "[registerUser] Registration failed since password was too weak")
+                                    Toast.makeText(this, "Registration failed, your password is too weak! Must be at least 6 characters long", Toast.LENGTH_SHORT).show()
+                                }
+                                is FirebaseAuthInvalidCredentialsException -> {
+                                    Log.d(TAG, "[registerUser] Registration failed since email is malformed")
+                                    Toast.makeText(this, "Registration failed, encountered an invalid email address!", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
                     }
-                    else {
-                        Toast.makeText(this,"Registration failed, an account with this username already exists!",Toast.LENGTH_SHORT).show()
-                        Log.d(TAG,"[registerUser] Username already exists")
-                    }
                 }
                 else {
-                    Log.d(TAG,"[registerUser] Problems when checking uniqueness of username")
-                    val message = checkUsernameTask.exception!!.message
-                    Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,"Registration failed, an account with this username already exists!",Toast.LENGTH_SHORT).show()
+                    Log.d(TAG,"[registerUser] Username already exists")
                 }
             }
-        }
-        else {
-            // If credentials empty warn user about this
-            Log.d(TAG,"[registerUser] Registration failed because input was empty")
-            Toast.makeText(this, "Please fill all credentials", Toast.LENGTH_SHORT).show()
+            else {
+                Log.d(TAG,"[registerUser] Problems when checking uniqueness of username")
+                val message = checkUsernameTask.exception!!.message
+                Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

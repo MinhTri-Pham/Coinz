@@ -9,6 +9,8 @@ import android.widget.EditText
 import android.widget.Toast
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 
 class ResetPasswordActivity : AppCompatActivity() {
 
@@ -32,18 +34,28 @@ class ResetPasswordActivity : AppCompatActivity() {
                 mAuth.sendPasswordResetEmail(email).addOnCompleteListener {task: Task<Void> ->
                     if (task.isSuccessful) {
                         Toast.makeText(this, "Reset password link sent. Please check " +
-                                "your email address", Toast.LENGTH_SHORT).show()
+                                "your email address!", Toast.LENGTH_SHORT).show()
                         startActivity(Intent(this,LoginActivity::class.java))
                     }
                     else {
-                        val message = task.exception!!.message
-                        Log.d(TAG, "Error getting data")
-                        Toast.makeText(this,"Error occurred: $message", Toast.LENGTH_SHORT).show()
+                        // Show detailed reason why password reset failed
+                        val exc = task.exception
+                        when (exc) {
+                            is FirebaseAuthInvalidCredentialsException -> {
+                                Log.d(TAG, "[registerUser] Password reset failed since email is malformed")
+                                Toast.makeText(this, "Password reset failed, encountered an invalid email address!", Toast.LENGTH_SHORT).show()
+                            }
+                            is FirebaseAuthInvalidUserException -> {
+                                Log.d(TAG, "[registerUser] Password reset failed since no user exists")
+                                Toast.makeText(this, "Password reset failed, no user with this email exists!", Toast.LENGTH_SHORT).show()
+                            }
+
+                        }
                     }
                 }
             }
             else {
-                Toast.makeText(this,"Enter you enter address first!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,"Enter your email address first!", Toast.LENGTH_SHORT).show()
             }
         }
     }
