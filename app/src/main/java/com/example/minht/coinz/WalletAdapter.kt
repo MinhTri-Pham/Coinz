@@ -44,12 +44,15 @@ class WalletAdapter(private val context: Context, private val dataSource: ArrayL
             holder = view.tag as ViewHolder
         }
         // Populate subviews
-        Log.d(TAG,"[getView] Make entry for coin")
         val coin = dataSource[position]
+        Log.d(TAG,"[getView] Make entry for coin $coin")
         holder.coinSummary!!.text = coin.toString()
         // Mark coins received from other players in italic
         if (!coin.collected) {
             holder.coinSummary!!.setTypeface(null, Typeface.ITALIC)
+        }
+        else {
+            holder.coinSummary!!.setTypeface(null, Typeface.NORMAL)
         }
         // Keep track of which entries are selected
         holder.coinCheckBox!!.isChecked = coin.selected

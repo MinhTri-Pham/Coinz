@@ -67,13 +67,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     private var numCollectCoins = 0 // Number of coins collected on the current day
     private var markerList = HashMap<String,Marker>() // HashMap of markers shown in the map
     private var visitedMarkerSet : MutableSet<String> = mutableSetOf() // Visited markers on the day
+
+    // Flags which could stop coin collection
     private var fullWallet = false
     private var collectionBonus = 0
     private var collectionBonusReceived = false // Whether player received daily bonus already
     private var connectionFlag = false // Whether connection warning issued
+    private var latestFlag = false // Whether map expiration warning issued
 
     // Map downloading
-    private var latestFlag = false // Whether map expiration warning issued
     private var downloadDate = "" // Format: YYYY/MM/DD
     private var mapString = "" // String with map data
     private lateinit var mapJson : JSONObject // JSON object of map
@@ -235,6 +237,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             Log.d(TAG, "[onMapReady] Loaded number of collected coins as $numCollectCoins")
                             numDepositCoins = taskResult.getLong(NUM_DEPOSIT_KEY)!!.toInt()
                             Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
+                            // TEST
+                            //numDepositCoins = 25
+                             //TEST
                             progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                             collectionBonusReceived = taskResult.getBoolean(DAILY_BONUS_KEY)!!
                             collectionBonusReceived = false
@@ -317,6 +322,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                 val coinCurrency = coinProps.getString("currency")
                 val coinValue = coinProps.getString("value").toDouble()
                 val coinCoords = coin.getJSONObject("geometry").getJSONArray("coordinates")
+                // Note that coordinates given in opposite order
                 val coinLatLng = LatLng(coinCoords.get(1) as Double,coinCoords.get(0) as Double)
                 val iconFactory = IconFactory.getInstance(this)
                 var icon : Icon? = null
@@ -458,7 +464,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
     // -- Check for odd cases: wallet becomes full, map expires, network connection lost
     override fun onLocationChanged(location: Location?) {
         if (location == null) {
-            Log.d(TAG, "[onLocationChanged] Location is null")
+            Log.d(TAG, "[onLocationChanged] Location unknown")
         } else {
             // Keep track of distance walked and calories burned
             if (originLocation != null) {

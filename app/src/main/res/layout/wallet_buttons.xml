@@ -44,7 +44,7 @@
         android:layout_margin="8dp"
         android:layout_weight="1"
         android:background="@color/colorPrimaryDark"
-        android:text="@string/select_all"
+        android:text="@string/deselect_all"
         android:textColor="@color/colorPrimary"
         style="@style/Widget.AppCompat.Button"/>
 
