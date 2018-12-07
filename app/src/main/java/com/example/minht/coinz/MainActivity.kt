@@ -237,9 +237,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             Log.d(TAG, "[onMapReady] Loaded number of collected coins as $numCollectCoins")
                             numDepositCoins = taskResult.getLong(NUM_DEPOSIT_KEY)!!.toInt()
                             Log.d(TAG, "[onMapReady] Loaded number of deposited coins as $numDepositCoins")
-                            // TEST
-                            //numDepositCoins = 25
-                             //TEST
                             progressInfo.text = "Coins: $numCollectCoins / $MAX_DAILY_COINS"
                             collectionBonusReceived = taskResult.getBoolean(DAILY_BONUS_KEY)!!
                             collectionBonusReceived = false
@@ -676,7 +673,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         // Start as usual if network connection available, otherwise sign out immediately
         if (isNetworkAvailable()) {
             Log.d(TAG,"[onStart] User connected, start as usual")
-            Toast.makeText(this,"Please wait while content updates", Toast.LENGTH_SHORT).show()
             // Restore data from Shared Preferences
             val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
             // Recall map downloading variables
@@ -781,7 +777,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                     Log.d(TAG,"[loadData] Loaded wallet as: $dataString")
                     val type = object : TypeToken<ArrayList<Coin>>(){}.type
                     walletList = gson.fromJson(dataString, type)
-                    fullWallet = walletList.size >= MAX_COINS_LIMIT
+                    fullWallet = walletList.size == MAX_COINS_LIMIT
                     if (fullWallet) {
                         Log.d(TAG, "[loadData] Wallet si full, can't collect coins.")
                         Toast.makeText(this, "Your wallet is full, you won't be able to collect coins! Clean up your wallet.",

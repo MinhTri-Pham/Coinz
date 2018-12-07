@@ -37,8 +37,8 @@ class LeaderboardActivity : AppCompatActivity() {
 
     companion object {
         const val PREFS_FILE = "MyPrefsFile"
-        const val TAG = "LeaderboardActivity" // LOgging purposes
-        const val DEFAULT_DISPLAY_NUM = 100 // How many top players are displayed
+        const val TAG = "LeaderboardActivity" // Logging purposes
+        const val DEFAULT_DISPLAY_NUM = 10 // How many top players are displayed
         // Keys in Intent/Firestore
         const val COLLECTION_KEY = "Users"
         const val USERNAME_KEY= "Username"
