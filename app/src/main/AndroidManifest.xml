@@ -17,7 +17,8 @@
         <activity
             android:name=".MainActivity"
             android:label="Today's map"
-            android:theme="@style/AppTheme.NoActionBar"/>
+            android:theme="@style/AppTheme.NoActionBar"
+            android:launchMode="singleTop"/>
         <activity
             android:name=".LoginActivity"
             android:theme="@style/AppTheme.NoActionBar" >
@@ -30,7 +31,8 @@
         <activity
             android:name=".RegisterActivity"
             android:label="Register"
-            android:parentActivityName=".LoginActivity" />
+            android:parentActivityName=".LoginActivity"
+            android:launchMode="singleTop"/>
         <activity
             android:name=".WalletActivity"
             android:label="Wallet"

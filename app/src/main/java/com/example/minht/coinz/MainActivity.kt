@@ -3,11 +3,15 @@ package com.example.minht.coinz
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.annotation.VisibleForTesting
 import android.support.design.widget.NavigationView
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import android.support.v4.view.GravityCompat
 import android.support.v4.widget.DrawerLayout
 import android.support.v7.app.ActionBar
@@ -22,15 +26,12 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
-//import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
 import com.mapbox.android.core.location.LocationEngineProvider
-import com.mapbox.android.core.permissions.PermissionsListener
-import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.annotations.Icon
 import com.mapbox.mapboxsdk.annotations.IconFactory
@@ -43,23 +44,23 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
-//import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener,
-        PermissionsListener,DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
+        DownloadCompleteListener,NavigationView.OnNavigationItemSelectedListener {
 
     // Location variables
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
     private var originLocation : Location? = null
-    private lateinit var permissionsManager: PermissionsManager
     private var locationEngine : LocationEngine? = null
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
@@ -140,6 +141,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         const val MAX_MARKER_DISTANCE = 25 // Maximum distance from coin to collect it
         const val MAX_DAILY_COINS = 50 // Maximum number of coins that can be collected per day
         const val MAX_COINS_LIMIT = 200 // Maximum number of coins that can be in the wallet at any time
+        const val FINE_LOCATION_CODE = 1 // Code for requesting location permission
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -366,10 +368,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         editor.putString("shilRate", shilRate.toString())
         editor.apply()
         // Display new rates to user
-        penyInfo.text = "PENY: ${String.format("%.3f",penyRate)}"
-        dolrInfo.text = "DOLR: ${String.format("%.3f",dolrRate)}"
-        quidInfo.text = "QUID: ${String.format("%.3f",quidRate)}"
-        shilInfo.text = "SHIL: ${String.format("%.3f",shilRate)}"
+        penyInfo.text = "PENY: ${String.format("%.2f",penyRate)}"
+        dolrInfo.text = "DOLR: ${String.format("%.2f",dolrRate)}"
+        quidInfo.text = "QUID: ${String.format("%.2f",quidRate)}"
+        shilInfo.text = "SHIL: ${String.format("%.2f",shilRate)}"
     }
 
     // Determine collection bonus based on number of maps completed
@@ -396,14 +398,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Showing user location
     private fun enableLocation() {
-        if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            Log.d(TAG, "Permissions are granted")
+        val permission = ContextCompat.checkSelfPermission(this,android.Manifest.permission.ACCESS_FINE_LOCATION)
+        if (permission == PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG,"[enableLocation] Permission to access location granted")
             initialiseLocationEngine()
             initialiseLocationLayer()
-        } else {
-            Log.d(TAG, "Permissions are not granted")
-            permissionsManager = PermissionsManager(this)
-            permissionsManager.requestLocationPermissions(this)
+        }
+        else {
+            Log.d(TAG,"[enableLocation] Permission to access location denied")
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),FINE_LOCATION_CODE)
         }
     }
 
@@ -646,17 +649,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         locationEngine!!.requestLocationUpdates()
     }
 
-    override fun onExplanationNeeded(permissionsToExplain:
-                                     MutableList<String>?) {
-        Log.d(TAG, "Permissions: $permissionsToExplain")
-    }
-
-    override fun onPermissionResult(granted: Boolean) {
-        Log.d(TAG, "[onPermissionResult] granted == $granted")
-        if (granted) {
-            enableLocation()
-        } else {
-            Toast.makeText(this,"Review location permission settings", Toast.LENGTH_SHORT).show()
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        when (requestCode) {
+            FINE_LOCATION_CODE -> {
+                if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG,"[onRequestPermissionsResult] Permission denied by user")
+                }
+                else {
+                    Log.d(TAG,"[onRequestPermissionsResult] Permission granted by user")
+                    initialiseLocationEngine()
+                    initialiseLocationLayer()
+                }
+            }
         }
     }
 
