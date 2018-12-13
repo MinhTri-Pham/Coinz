@@ -18,10 +18,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.Espresso.pressBack;
 import static android.support.test.espresso.action.ViewActions.click;
 import static android.support.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static android.support.test.espresso.action.ViewActions.replaceText;
-import static android.support.test.espresso.action.ViewActions.scrollTo;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withContentDescription;
@@ -31,7 +31,7 @@ import static org.hamcrest.Matchers.allOf;
 
 @LargeTest
 @RunWith(AndroidJUnit4.class)
-public class SignOutTest {
+public class LoginSuccessfulTest {
 
     @Rule
     public ActivityTestRule<LoginActivity> mActivityTestRule = new ActivityTestRule<>(LoginActivity.class);
@@ -39,38 +39,25 @@ public class SignOutTest {
     @Rule
     public GrantPermissionRule mRuntimePermissionRule = GrantPermissionRule.grant(android.Manifest.permission.ACCESS_FINE_LOCATION);
 
-    // Test that user can sign in and then successfully sign out back into the log in screen
+    // Test that succesful login with correct welcome message
+
     @Test
-    public void signOutTest() {
-        try {
-            Thread.sleep(600);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
+    public void loginSuccessfulTest() {
         ViewInteraction appCompatEditText = onView(withId(R.id.editTextEmail));
-        appCompatEditText.perform(replaceText("espresso@test.com"), closeSoftKeyboard());
-
-        try {
-            Thread.sleep(600);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        appCompatEditText.perform(replaceText("coinzuser@gmail.com"), closeSoftKeyboard());
 
         ViewInteraction appCompatEditText2 = onView(withId(R.id.editTextPassword));
         appCompatEditText2.perform(replaceText("123456"), closeSoftKeyboard());
 
-        try {
-            Thread.sleep(600);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         ViewInteraction appCompatButton = onView(withId(R.id.loginButton));
         appCompatButton.perform(click());
 
+        // Added a sleep statement to match the app's execution delay.
+        // The recommended way to handle such scenarios is to use Espresso idling resources:
+        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
         try {
-            Thread.sleep(3000);
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -86,47 +73,11 @@ public class SignOutTest {
                         isDisplayed()));
         appCompatImageButton.perform(click());
 
-        ViewInteraction appCompatImageButton2 = onView(
-                allOf(withContentDescription("Navigate up"),
-                        childAtPosition(
-                                allOf(withId(R.id.toolbar),
-                                        childAtPosition(
-                                                withId(R.id.appBarLayout),
-                                                0)),
-                                1),
-                        isDisplayed()));
-        appCompatImageButton2.perform(click());
+        ViewInteraction textView = onView(withId(R.id.nav_text_username));
+        textView.check(matches(withText("Welcome back coinzTest!")));
 
-        ViewInteraction navigationMenuItemView = onView(
-                allOf(childAtPosition(
-                        allOf(withId(R.id.design_navigation_view),
-                                childAtPosition(
-                                        withId(R.id.nav_view),
-                                        0)),
-                        6),
-                        isDisplayed()));
-        navigationMenuItemView.perform(click());
-
-        ViewInteraction appCompatButton2 = onView(
-                allOf(withId(android.R.id.button1), withText("Yes"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(R.id.buttonPanel),
-                                        0),
-                                3)));
-        appCompatButton2.perform(scrollTo(), click());
-
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        ViewInteraction textView = onView(withId(R.id.welcomeText));
-        textView.check(matches(isDisplayed()));
-
-        ViewInteraction button = onView(withId(R.id.loginButton));
-        button.check(matches(isDisplayed()));
+        ViewInteraction textView2 = onView(withId(R.id.nav_text_email));
+        textView2.check(matches(withText("coinzuser@gmail.com")));
 
     }
 
