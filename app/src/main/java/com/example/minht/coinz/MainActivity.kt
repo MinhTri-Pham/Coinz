@@ -8,7 +8,6 @@ import android.location.Location
 import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.support.annotation.VisibleForTesting
 import android.support.design.widget.NavigationView
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
@@ -47,8 +46,6 @@ import kotlinx.android.synthetic.main.activity_main.*
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
