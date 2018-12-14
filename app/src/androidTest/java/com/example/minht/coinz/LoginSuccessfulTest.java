@@ -5,7 +5,7 @@ import android.support.test.espresso.ViewInteraction;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.rule.GrantPermissionRule;
 import android.support.test.runner.AndroidJUnit4;
-import android.test.suitebuilder.annotation.LargeTest;
+import android.support.test.filters.LargeTest;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -38,12 +38,12 @@ public class LoginSuccessfulTest {
     @Rule
     public GrantPermissionRule mRuntimePermissionRule = GrantPermissionRule.grant(android.Manifest.permission.ACCESS_FINE_LOCATION);
 
-    // Test that succesful login with correct welcome message
+    // Test that successful login with correct welcome message
 
     @Test
     public void loginSuccessfulTest() {
         ViewInteraction appCompatEditText = onView(withId(R.id.editTextEmail));
-        appCompatEditText.perform(replaceText("coinzuser@gmail.com"), closeSoftKeyboard());
+        appCompatEditText.perform(replaceText("espresso@test.com"), closeSoftKeyboard());
 
         ViewInteraction appCompatEditText2 = onView(withId(R.id.editTextPassword));
         appCompatEditText2.perform(replaceText("123456"), closeSoftKeyboard());
@@ -52,9 +52,6 @@ public class LoginSuccessfulTest {
         ViewInteraction appCompatButton = onView(withId(R.id.loginButton));
         appCompatButton.perform(click());
 
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
-        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {
@@ -73,10 +70,10 @@ public class LoginSuccessfulTest {
         appCompatImageButton.perform(click());
 
         ViewInteraction textView = onView(withId(R.id.nav_text_username));
-        textView.check(matches(withText("Welcome back coinzTest!")));
+        textView.check(matches(withText("Welcome back espresso!")));
 
         ViewInteraction textView2 = onView(withId(R.id.nav_text_email));
-        textView2.check(matches(withText("coinzuser@gmail.com")));
+        textView2.check(matches(withText("espresso@test.com")));
 
     }
 

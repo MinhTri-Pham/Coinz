@@ -46,6 +46,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -80,7 +82,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Firebase/Firestore variables
     private lateinit var mAuth: FirebaseAuth
-    private lateinit var uid : String
+    private var uid = ""
     private lateinit var db : FirebaseFirestore
 
     // Wallet & Bank Account
@@ -104,7 +106,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
 
     // Display variables
     private lateinit var mDrawerLayout : DrawerLayout
-    private lateinit var mapDate : TextView
+    private lateinit var mapInfo : TextView
     private lateinit var progressInfo : TextView
     private lateinit var bonusInfo : TextView
     private lateinit var penyInfo : TextView
@@ -161,7 +163,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         setUpNavDrawer()
         Mapbox.getInstance(this, getString(R.string.access_token))
         // Map info views
-        mapDate = findViewById(R.id.mapDate)
+        mapInfo = findViewById(R.id.mapDate)
         progressInfo = findViewById(R.id.progressInfo)
         bonusInfo = findViewById(R.id.bonusInfo)
         penyInfo = findViewById(R.id.penyInfo)
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         val headerView = navigationView.getHeaderView(0)
         val navUsernameText = headerView.findViewById(R.id.nav_text_username) as TextView
         val navEmailText = headerView.findViewById(R.id.nav_text_email) as TextView
-        val userRef = db.collection(COLLECTION_KEY).document(uid)
+        val userRef = db.collection(COLLECTION_KEY).document(mAuth.uid!!)
         userRef.get().addOnCompleteListener {task: Task<DocumentSnapshot> ->
             if (task.isSuccessful) {
                 // Fetch username and email
@@ -250,7 +252,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
                             // Today's map has been downloaded and stored in Shared Preferences, render markers directly
                             Log.d(TAG,"[onMapReady] Map has already been downloaded today, rendering markers directly")
                             renderJson(map,mapJson)
-                            mapDate.text = "Map date: $currDate"
+                            mapInfo.text = "Map date: $currDate"
                             penyInfo.text = "PENY: ${String.format("%.2f",penyRate)}"
                             dolrInfo.text = "DOLR: ${String.format("%.2f",dolrRate)}"
                             quidInfo.text = "QUID: ${String.format("%.2f",quidRate)}"
@@ -352,18 +354,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         dolrRate = rates.getDouble("DOLR")
         quidRate = rates.getDouble("QUID")
         shilRate = rates.getDouble("SHIL")
-        Log.d(TAG,"[updateExchangeRates] Updated rate for PENY is " + String.format("%.3f",penyRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.3f",dolrRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.3f",quidRate))
-        Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.3f",shilRate))
-        // Store in Shared Preferences
-        val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-        val editor = settings.edit()
-        editor.putString("penyRate", penyRate.toString())
-        editor.putString("dolrRate", dolrRate.toString())
-        editor.putString("quidRate", quidRate.toString())
-        editor.putString("shilRate", shilRate.toString())
-        editor.apply()
+        Log.d(TAG,"[updateExchangeRates] Updated rate for PENY is " + String.format("%.2f",penyRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for DOLR is " + String.format("%.2f",dolrRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for QUID is " + String.format("%.2f",quidRate))
+        Log.d(TAG,"[updateExchangeRates] Updated rate for SHIL is " + String.format("%.2f",shilRate))
         // Display new rates to user
         penyInfo.text = "PENY: ${String.format("%.2f",penyRate)}"
         dolrInfo.text = "DOLR: ${String.format("%.2f",dolrRate)}"
@@ -837,7 +831,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
         if (mapJson.length() != 0) {
             latestFlag = true
             downloadDate = getCurrentDate()
-            mapDate.text = "Map date: $downloadDate" // Update map date info
+            mapInfo.text = "Map date: $downloadDate" // Update map date info
             Log.d(TAG, "[downloadComplete] Successfully extracted map")
             val settings = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
             val editor = settings.edit()
@@ -847,10 +841,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineList
             editor.putString(MAP_KEY,mapString)
             Log.d(TAG, "[downloadComplete] Stored lastDownloadDate as $downloadDate")
             Log.d(TAG, "[downloadComplete] Stored lastCoinMap as $mapString")
+            updateExchangeRates(mapJson)
+            // Store new exchange rates in Shared Preferences
+            editor.putString("penyRate", penyRate.toString())
+            editor.putString("dolrRate", dolrRate.toString())
+            editor.putString("quidRate", quidRate.toString())
+            editor.putString("shilRate", shilRate.toString())
             editor.apply()
             // Render markers after download was completed
             renderJson(map, mapJson)
-            updateExchangeRates(mapJson)
         }
         else {
             Log.d(TAG, "[downloadComplete] Couldn't extract map")
