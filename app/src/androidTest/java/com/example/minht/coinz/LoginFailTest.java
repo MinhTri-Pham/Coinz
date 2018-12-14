@@ -29,8 +29,6 @@ public class LoginFailTest {
     // Not filling any credentials stays in login
     @Test
     public void loginEmptyCredentialsTest() {
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
@@ -40,8 +38,6 @@ public class LoginFailTest {
         ViewInteraction appCompatButton = onView(withId(R.id.loginButton));
         appCompatButton.perform(click());
 
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
@@ -56,8 +52,6 @@ public class LoginFailTest {
     // Not filling password stays in login
     @Test
     public void loginEmptyPassword() {
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
@@ -76,11 +70,9 @@ public class LoginFailTest {
         appCompatButton.check(matches(isDisplayed()));
     }
 
-    // Not filling password stays in login
+    // Not filling email stays in login
     @Test
     public void loginEmptyEmail() {
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
@@ -103,8 +95,6 @@ public class LoginFailTest {
     // Test sign up login switches to register
     @Test
     public void switchToRegisterTest() {
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {

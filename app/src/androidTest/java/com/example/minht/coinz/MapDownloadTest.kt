@@ -55,7 +55,7 @@ class MapDownloadTest {
     var mActivityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
 
     @Rule @JvmField
-    var mRuntimePermissionRule = GrantPermissionRule.grant(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    var mRuntimePermissionRule = GrantPermissionRule.grant(android.Manifest.permission.ACCESS_FINE_LOCATION)!!
 
     @Before
     fun setUp() {

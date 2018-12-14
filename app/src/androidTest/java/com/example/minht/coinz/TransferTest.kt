@@ -15,7 +15,6 @@ import android.support.test.espresso.action.ViewActions.click
 import android.support.test.espresso.action.ViewActions.replaceText
 import android.support.test.espresso.assertion.ViewAssertions.matches
 import android.support.test.espresso.matcher.ViewMatchers.*
-import android.view.View
 import com.google.firebase.auth.FirebaseAuth
 import org.hamcrest.Matchers
 
