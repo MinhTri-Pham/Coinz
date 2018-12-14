@@ -70,7 +70,7 @@ public class SignOutTest {
         appCompatButton.perform(click());
 
         try {
-            Thread.sleep(3000);
+            Thread.sleep(8000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

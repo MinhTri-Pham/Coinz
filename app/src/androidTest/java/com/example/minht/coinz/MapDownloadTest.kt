@@ -3,18 +3,11 @@ package com.example.minht.coinz
 
 import android.content.Context
 import android.support.test.InstrumentationRegistry
-import android.support.test.espresso.ViewInteraction
 import android.support.test.filters.LargeTest
 import android.support.test.rule.ActivityTestRule
 import android.support.test.rule.GrantPermissionRule
 import android.support.test.runner.AndroidJUnit4
-import android.view.View
-import android.view.ViewGroup
-import android.view.ViewParent
 
-import org.hamcrest.Description
-import org.hamcrest.Matcher
-import org.hamcrest.TypeSafeMatcher
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -78,7 +71,7 @@ class MapDownloadTest {
         val editor = settings.edit()
         // Make sure current date matches latest download date
         editor.putString(DOWNLOAD_DATE_KEY,Helper.getCurrentDate())
-        val testIs = context.assets.open("test.geojson");
+        val testIs = context.assets.open("test.geojson")
         val result = StringBuilder()
         // Build test map
         val reader = BufferedReader(InputStreamReader(testIs))
@@ -89,10 +82,10 @@ class MapDownloadTest {
         }
         getRates(JSONObject(result.toString()))
         editor.putString(MAP_KEY,result.toString())
-        editor.putString(PENY_KEY,String.format("%.2f",penyRate))
-        editor.putString(DOLR_KEY,String.format("%.2f",dolrRate))
-        editor.putString(QUID_KEY,String.format("%.2f",quidRate))
-        editor.putString(SHIL_KEY,String.format("%.2f",shilRate))
+        editor.putString(PENY_KEY,penyRate.toString())
+        editor.putString(DOLR_KEY,dolrRate.toString())
+        editor.putString(QUID_KEY,quidRate.toString())
+        editor.putString(SHIL_KEY,shilRate.toString())
         editor.apply()
     }
 
@@ -133,5 +126,4 @@ class MapDownloadTest {
         editor.putString(SHIL_KEY,"0.0")
         editor.apply()
     }
-
 }

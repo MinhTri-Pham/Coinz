@@ -53,7 +53,7 @@ public class LoginSuccessfulTest {
         appCompatButton.perform(click());
 
         try {
-            Thread.sleep(5000);
+            Thread.sleep(8000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
