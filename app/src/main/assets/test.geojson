@@ -1,0 +1,1067 @@
+
+{
+  "type": "FeatureCollection",
+  "date-generated": "Sun Dec 16 2018",
+  "time-generated": "00:00",
+  "approximate-time-remaining": "23:59",
+  "rates": {
+                   "SHIL": 24.91993269859127,
+                   "DOLR": 28.646741678115372,
+                   "QUID": 72.07009208671066,
+                   "PENY": 35.31486531827545
+               },
+  "features": [
+  
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "2c81-c902-d115-bf45-e464-9a48",
+        "value": "6.838522121560866",
+        "currency": "SHIL",
+        "marker-symbol": "6",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1874488304382123,
+          55.94326320716406
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "71d3-0b5c-041e-10aa-0b7f-b542",
+        "value": "7.137970647768121",
+        "currency": "QUID",
+        "marker-symbol": "7",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1846176393111914,
+          55.94525895598409
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "49ef-2803-65b4-a476-a9a3-9f77",
+        "value": "0.9698846103756276",
+        "currency": "SHIL",
+        "marker-symbol": "0",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1864867465037405,
+          55.94310834733579
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "267b-e298-03b7-a8b1-5311-d8d6",
+        "value": "5.34627095022099",
+        "currency": "QUID",
+        "marker-symbol": "5",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.192427072154563,
+          55.945434132230346
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "eb4c-1eb4-1178-2e13-46f5-5de6",
+        "value": "4.391776889676851",
+        "currency": "PENY",
+        "marker-symbol": "4",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1858137660465893,
+          55.943703064368485
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "0309-722a-b499-0522-4cef-5349",
+        "value": "3.8662013983484664",
+        "currency": "DOLR",
+        "marker-symbol": "3",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.189892843102783,
+          55.94323269480703
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "ab02-048d-f911-a072-4fe7-6d7d",
+        "value": "3.799765522771361",
+        "currency": "QUID",
+        "marker-symbol": "3",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.192002420298601,
+          55.94372320097587
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "750e-496f-cbb8-97b8-bc12-3538",
+        "value": "5.458722092361381",
+        "currency": "DOLR",
+        "marker-symbol": "5",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1868310123478922,
+          55.942745386818515
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "ade4-67fc-2dab-8da5-939b-d38b",
+        "value": "5.962625072710618",
+        "currency": "SHIL",
+        "marker-symbol": "5",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1864514272153466,
+          55.9431828787506
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "046e-ff11-fd41-7afc-5368-8f17",
+        "value": "9.020346545819613",
+        "currency": "DOLR",
+        "marker-symbol": "9",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1871382770845265,
+          55.94620047122799
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "01ad-2165-e546-5cb5-6d65-8868",
+        "value": "3.4263834644215896",
+        "currency": "DOLR",
+        "marker-symbol": "3",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.187280555640473,
+          55.943481919827605
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "8d39-2f0a-2203-6d82-c015-5023",
+        "value": "8.26736438399643",
+        "currency": "DOLR",
+        "marker-symbol": "8",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1910572004393454,
+          55.9427280678274
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "b7c4-da7b-736d-2331-1c1e-4c38",
+        "value": "6.0015117451739055",
+        "currency": "SHIL",
+        "marker-symbol": "6",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.186859592668262,
+          55.944641160869004
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "dbb9-fb8d-89e5-3fd9-982e-a35f",
+        "value": "4.39033932508437",
+        "currency": "SHIL",
+        "marker-symbol": "4",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.187838622487267,
+          55.94568385072858
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "e9ec-a93f-0557-237c-ca46-df49",
+        "value": "4.355095251213079",
+        "currency": "PENY",
+        "marker-symbol": "4",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1846738662735645,
+          55.94495832303153
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "9cdc-2808-fb6b-7571-353c-491b",
+        "value": "4.444733163291769",
+        "currency": "QUID",
+        "marker-symbol": "4",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1873711490457737,
+          55.946124211913684
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "c95f-f278-ca87-babf-501a-5468",
+        "value": "0.6704583381923002",
+        "currency": "SHIL",
+        "marker-symbol": "0",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.185459980801431,
+          55.945814136518635
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "325b-6790-3aa7-d815-ea12-c002",
+        "value": "1.3161956312988499",
+        "currency": "SHIL",
+        "marker-symbol": "1",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1874925102374876,
+          55.94544856726118
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "87be-f713-784d-e824-5a91-f39d",
+        "value": "1.0217744332650314",
+        "currency": "PENY",
+        "marker-symbol": "1",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1921533817920924,
+          55.943895196050065
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "82c1-30eb-29d0-cf52-67ec-cf39",
+        "value": "6.9454126422392815",
+        "currency": "PENY",
+        "marker-symbol": "6",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.188373776692446,
+          55.944296244256535
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "9d34-3911-fc28-71df-eb68-58a7",
+        "value": "2.1312100303026025",
+        "currency": "PENY",
+        "marker-symbol": "2",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.185533779248208,
+          55.94380206362806
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "e901-c0ed-bd07-1390-6989-9ee0",
+        "value": "0.7571133634953198",
+        "currency": "QUID",
+        "marker-symbol": "0",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.191573281674998,
+          55.94503660877109
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "9a8f-2a22-a095-0490-2fa5-8d31",
+        "value": "8.170687884286545",
+        "currency": "QUID",
+        "marker-symbol": "8",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1922092317733113,
+          55.94328483079566
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "769e-9482-7639-fc2a-b06a-91de",
+        "value": "8.696806602721276",
+        "currency": "QUID",
+        "marker-symbol": "8",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1910990724855326,
+          55.94437487439668
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "3c69-cf8a-ed29-341e-49fa-3185",
+        "value": "3.3167963136145637",
+        "currency": "DOLR",
+        "marker-symbol": "3",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1887407020235603,
+          55.94367876563733
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "c591-55d4-3e59-f7a8-6f7c-64c1",
+        "value": "6.347391993052609",
+        "currency": "PENY",
+        "marker-symbol": "6",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.186019685559262,
+          55.942622494955565
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "b014-5cc4-a376-770c-aaa2-4bb5",
+        "value": "4.526537891476785",
+        "currency": "PENY",
+        "marker-symbol": "4",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.189474615351278,
+          55.944608569866205
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "f4c4-16a4-cc02-b10d-e753-acd2",
+        "value": "4.522455917402928",
+        "currency": "PENY",
+        "marker-symbol": "4",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1881170669049186,
+          55.94420729611608
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "4ba0-1041-b5f6-824b-a970-b78d",
+        "value": "1.9823427928278903",
+        "currency": "PENY",
+        "marker-symbol": "1",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1869225878018552,
+          55.94273174391263
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "e546-e7bd-1f77-5bea-b211-5bbf",
+        "value": "9.218234168634261",
+        "currency": "DOLR",
+        "marker-symbol": "9",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1858358842094376,
+          55.942843664792505
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "ef6a-d132-a282-42f9-c5b7-c972",
+        "value": "0.6617925455958229",
+        "currency": "SHIL",
+        "marker-symbol": "0",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1878374055147853,
+          55.942771218939036
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "a4ef-f717-5c58-ba22-bc29-c6db",
+        "value": "3.2774222562453827",
+        "currency": "DOLR",
+        "marker-symbol": "3",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.185056098195506,
+          55.94375942255888
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "40ab-f529-c55e-4f0d-2584-6e8a",
+        "value": "7.42807785316916",
+        "currency": "SHIL",
+        "marker-symbol": "7",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1873217367802895,
+          55.944810975916354
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "9852-4214-3cb5-4c20-5975-77a6",
+        "value": "4.7135400897034385",
+        "currency": "PENY",
+        "marker-symbol": "4",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1886763598186234,
+          55.943714807657884
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "29c1-96be-f68a-18d6-a370-e23a",
+        "value": "7.896925740027635",
+        "currency": "SHIL",
+        "marker-symbol": "7",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1911211191798454,
+          55.946088751369864
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "a84c-81be-30b2-9124-86f0-1f3b",
+        "value": "4.655592792847506",
+        "currency": "QUID",
+        "marker-symbol": "4",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1883181647589516,
+          55.94503242556527
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "d07a-ac6a-be2b-90b2-d5c8-ef1c",
+        "value": "5.214868866544701",
+        "currency": "QUID",
+        "marker-symbol": "5",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.184843592183641,
+          55.94601356502284
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "9115-b938-453a-3e44-0450-e226",
+        "value": "0.3622484693568395",
+        "currency": "QUID",
+        "marker-symbol": "0",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1893670371124756,
+          55.94581612534878
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "7275-fbaf-1c56-e058-ba82-8e2d",
+        "value": "8.506035727495082",
+        "currency": "SHIL",
+        "marker-symbol": "8",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.187655345904647,
+          55.94460044055861
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "6829-2574-a38b-254c-96c7-7acf",
+        "value": "3.804804746166784",
+        "currency": "DOLR",
+        "marker-symbol": "3",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1881420037116204,
+          55.945283233098024
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "2f2e-2f4e-d837-6410-c789-af1e",
+        "value": "5.189411191609098",
+        "currency": "DOLR",
+        "marker-symbol": "5",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1870346120519413,
+          55.944681430446785
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "44c0-b161-ff47-9382-1bc7-ac55",
+        "value": "2.9445926339472885",
+        "currency": "SHIL",
+        "marker-symbol": "2",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.191951932689014,
+          55.94297399115441
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "91eb-c5c2-68c5-5e4b-ed52-3118",
+        "value": "1.1203330164547842",
+        "currency": "SHIL",
+        "marker-symbol": "1",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.18844523663518,
+          55.945036346065734
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "0ea7-16dc-068e-42ad-5c83-8109",
+        "value": "2.9829213882225103",
+        "currency": "SHIL",
+        "marker-symbol": "2",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.185087239222788,
+          55.94525584932864
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "0909-108b-c634-8f19-1f9c-833c",
+        "value": "7.69591963520654",
+        "currency": "QUID",
+        "marker-symbol": "7",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.190818516818946,
+          55.94549855386747
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "1fc1-70e2-0cac-3079-bf1f-e023",
+        "value": "4.982690115044885",
+        "currency": "QUID",
+        "marker-symbol": "4",
+        "marker-color": "#ffdf00"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1844546366007944,
+          55.943453376469954
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "50b2-6947-6b1d-05d8-0cb3-4e49",
+        "value": "3.126360537452737",
+        "currency": "PENY",
+        "marker-symbol": "3",
+        "marker-color": "#ff0000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.189714022384217,
+          55.945078210895204
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "aad6-db86-2d18-b90c-1be5-70db",
+        "value": "9.25402702719443",
+        "currency": "DOLR",
+        "marker-symbol": "9",
+        "marker-color": "#008000"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1869388858177836,
+          55.94600478477616
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "058c-f2af-8806-6ff7-b956-0383",
+        "value": "1.1172565722616545",
+        "currency": "SHIL",
+        "marker-symbol": "1",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1850547276562566,
+          55.94334995099392
+        ]
+      }
+
+    },
+        
+    {
+      "type": "Feature",
+      
+      "properties": {
+        "id": "5483-50bf-48be-4960-d463-5abb",
+        "value": "4.674724997370731",
+        "currency": "SHIL",
+        "marker-symbol": "4",
+        "marker-color": "#0000ff"
+      },
+      
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3.1919095780373854,
+          55.94334136202635
+        ]
+      }
+
+    }
+        
+   ]
+}
+        
