@@ -1,5 +1,1 @@
-Identifying information
-
-name: Minh Tri Pham
-
-matric. number: s1612839
+Android game where users and exchange collect coins randomly scattered around Edinburgh
